@@ -2,3 +2,5 @@
 /nbproject
 /doc
 phpdoc.xml
+phpunit.xml
+composer.lock
