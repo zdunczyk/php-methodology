@@ -1,0 +1,17 @@
+{
+    "type": "library",
+    "description": "Methodology is an experimental library for smart function calls in PHP 5.4.",
+    "license": "MIT",
+    "authors": [
+        {
+            "name": "Tomasz Zduńczyk",
+            "email": "tomasz@zdunczyk.org" 
+        }
+    ],
+    "autoload": {
+        "psr-0": { "Methodology": "lib/" }
+    },
+    "require": {
+        "php": ">=5.4.0"
+    }
+}
