@@ -41,8 +41,11 @@ abstract class AbstractScope implements ScopeResolverInterface {
      * @throws \OutOfBoundsException        when key is not found in current scope and there is no parent
      */
     public function resolve($key) {
-        if($this->isNameValid($key) && array_key_exists($key, $this->values))
+        if($this->isNameValid($key) 
+            && (isset($this->values[$key]) || array_key_exists($key, $this->values))) {
+                
             return $this->values[$key];
+        }
         
         if(!is_null($this->parent))
             return $this->parent->resolve($key);             
