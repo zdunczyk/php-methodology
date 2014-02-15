@@ -37,10 +37,11 @@ abstract class AbstractScope implements ScopeResolverInterface {
     /**
      * {@inheritdoc}
      * 
-     * @throws \OutOfBoundsException    when key is not found in current scope and there is no parent
+     * @throws \InvalidArgumentException    when key is not valid  
+     * @throws \OutOfBoundsException        when key is not found in current scope and there is no parent
      */
     public function resolve($key) {
-        if(array_key_exists($key, $this->values))
+        if($this->isNameValid($key) && array_key_exists($key, $this->values))
             return $this->values[$key];
         
         if(!is_null($this->parent))
@@ -51,11 +52,14 @@ abstract class AbstractScope implements ScopeResolverInterface {
 
     /**
      * Defines new function or variable in scope.
-     * 
-     * @param string    $key    identifier of value
-     * @param mixed     $value  value of variable to define 
+     *  
+     * @throws \InvalidArgumentException    when key is not valid 
+     * @param string    $key                identifier of value
+     * @param mixed     $value              value of variable to define 
      */
     public function define($key, $value) {
+        $this->isNameValid($key);
+        
         $this->values[$key] = $value;
     }
     
@@ -69,4 +73,17 @@ abstract class AbstractScope implements ScopeResolverInterface {
         return ($this->parent = $resolver);
     }
 
+    /**
+     * Validates variable identifier. 
+     * 
+     * @throws \InvalidArgumentException    when key is not valid 
+     * @param   $name                       identifier for validation 
+     * @return  boolean                     true when name is valid 
+     */
+    private function isNameValid($name) {
+        if(!is_string($name))
+            throw new \InvalidArgumentException("Scope's variable name must be a string!");
+        
+        return true;
+    }
 }

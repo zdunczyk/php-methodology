@@ -61,4 +61,36 @@ class ScopeTest extends PHPUnit_Framework_TestCase {
     public function testExpectExceptionOnUndefinedKey() {
         $this->scope->resolve('R60g0ME7');
     }
+
+    /**
+     * Provides invalid names of scope variables. 
+     */
+    public function invalidNameProvider() {
+        return array(
+            array(123),
+            array(function() { }),
+            array(array()),
+            array(NULL),
+            array(true),
+            array(new \StdClass)
+        );
+    }
+    
+    /**
+     * @dataProvider invalidNameProvider
+     * @covers Methodology\Scope::resolve
+     * @expectedException InvalidArgumentException 
+     */
+    public function testResolvingVariableValidation($invalid) {
+        $this->scope->resolve($invalid);
+    }
+    
+    /**
+     * @dataProvider invalidNameProvider
+     * @covers Methodology\Scope::resolve
+     * @expectedException InvalidArgumentException 
+     */
+    public function testDefiningVariableValidation($invalid) {
+        $this->scope->define($invalid, 0);
+    }
 }
