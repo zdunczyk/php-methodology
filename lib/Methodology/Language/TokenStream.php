@@ -11,6 +11,7 @@
 
 namespace Methodology\Language;
 
+use Methodology\Language\TokenNameIterator;
 use Symfony\Component\ExpressionLanguage\TokenStream as TokenStreamSymfony;
 
 /**
@@ -20,7 +21,7 @@ use Symfony\Component\ExpressionLanguage\TokenStream as TokenStreamSymfony;
  * @author  Tomasz Zduńczyk
  * @see     Symfony\Component\ExpressionLanguage\TokenStream::__toString() 
  */
-class TokenStream { 
+class TokenStream implements \IteratorAggregate { 
     /**
      * Size of data chunk in stringified SEL's TokenStream.
      */
@@ -83,5 +84,11 @@ class TokenStream {
         return $this->tokens;
     }
 
+    /**
+     * @return \Methodology\Language\TokenNameIterator
+     */
+    public function getIterator() {
+        return new TokenNameIterator($this->tokens);
+    }
 }
 

@@ -19,20 +19,24 @@ class TokenStreamTest extends PHPUnit_Framework_TestCase {
      * Provides tokens for SEL's stream. 
      */
     public function tokenProvider() {
+        $vals = array(
+            '23' => Token::NUMBER_TYPE,
+            'qwerty' => Token::NAME_TYPE,
+            '+' => Token::OPERATOR_TYPE,
+            '.' => Token::PUNCTUATION_TYPE,
+            'asdasd' => Token::NAME_TYPE
+        );
+        
+        $tokens = array();
+        $i = 1;
+        
+        foreach($vals as $val => $type) {
+            $tokens[] = new Token($type, $val, $i++); 
+        }
+        
         return array(
                 /* #0 */
-                array(
-                    array(
-                        new Token(Token::NUMBER_TYPE, '23', 1),
-                        new Token(Token::NAME_TYPE, 'qwerty', 4),
-                        new Token(Token::OPERATOR_TYPE, '+', 8)
-                    ),
-                    array(
-                        '23',
-                        'qwerty',
-                        '+' 
-                    )
-                )
+                array($tokens, array_keys($vals))
         );
     }
 
@@ -48,4 +52,16 @@ class TokenStreamTest extends PHPUnit_Framework_TestCase {
             $this->assertEquals($token->value, $values[$key]);
         }
     } 
+
+    /**
+     * @dataProvider    tokenProvider
+     * @covers          Methodology\Language\TokenStream::getIterator 
+     */ 
+    public function testIteratingThroughNames($tokens) {
+        $token_stream = new TokenStream(new SymfonyTokenStream($tokens)); 
+        
+        foreach($token_stream->getIterator() as $token) {
+            $this->assertEquals($token->type, strtoupper(Token::NAME_TYPE));        
+        }  
+    }
 }
