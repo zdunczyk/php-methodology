@@ -77,6 +77,19 @@ abstract class AbstractScope implements ScopeResolverInterface {
     }
 
     /**
+     * Creates a new child scope and assigns it to current one.
+     * 
+     * @param   mixed           params passed to constructor            
+     * @return  AbstractScope   child instance
+     */
+    protected function newChild() {
+        $self_instance = (new \ReflectionClass($this))->newInstanceArgs(func_get_args());
+        $self_instance->setParent($this);
+        
+        return $self_instance;
+    }
+    
+    /**
      * Validates variable identifier. 
      * 
      * @throws \InvalidArgumentException    when key is not valid 

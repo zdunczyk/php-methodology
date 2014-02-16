@@ -93,4 +93,12 @@ class ScopeTest extends PHPUnit_Framework_TestCase {
     public function testDefiningVariableValidation($invalid) {
         $this->scope->define($invalid, 0);
     }
+    
+    /**
+     * @covers Methodology\Scope::childScope
+     */
+    public function testChildScopeFromParent() {
+        $this->scope->define('var', 123); 
+        $this->assertEquals($this->scope->newChild()->resolve('var'), 123);
+    }
 }

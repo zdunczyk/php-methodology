@@ -20,4 +20,13 @@ use Methodology\AbstractScope;
  */
 class Scope extends AbstractScope {
 
+    /**
+     * Returns new scope instance which is a child of current scope.
+     * 
+     * @see     AbstractScope::newChild()
+     * @return  Scope    child instance
+     */
+    public function newChild() {
+        return parent::newChild();
+    }
 }
