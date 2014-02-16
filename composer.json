@@ -12,6 +12,7 @@
         "psr-0": { "Methodology": "lib/" }
     },
     "require": {
-        "php": ">=5.4.0"
+        "php": ">=5.4.0",
+        "symfony/expression-language": "v2.4.2"
     }
 }
