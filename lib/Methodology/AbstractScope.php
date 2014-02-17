@@ -12,6 +12,10 @@
 namespace Methodology;
 
 use Methodology\ScopeResolverInterface;
+use Methodology\Language\TokenStream;
+
+use Symfony\Component\ExpressionLanguage\TokenStream as SymfonyTokenStream;
+use Symfony\Component\ExpressionLanguage\Lexer;
 
 /**
  * Abstract class which supports basic scope manipulation.
@@ -34,6 +38,18 @@ abstract class AbstractScope implements ScopeResolverInterface {
      */
     protected $parent = null;
 
+    /**
+     * Holds name dependencies from defined expressions. 
+     * 
+     * @var array   
+     */
+    protected $dependencies = array();
+  
+    /**
+     * @var Lexer
+     */
+    protected static $lexer = null;
+    
     /**
      * {@inheritdoc}
      * 
@@ -62,6 +78,12 @@ abstract class AbstractScope implements ScopeResolverInterface {
      */
     public function define($key, $value) {
         $this->isNameValid($key);
+       
+        if(is_string($value)) {
+            $value = $this->getLexer()->tokenize($value); 
+            
+            $this->dependencies[$key] = $this->fetchDependenciesFrom($value);
+        }
         
         $this->values[$key] = $value;
     }
@@ -74,6 +96,13 @@ abstract class AbstractScope implements ScopeResolverInterface {
      */
     public function setParent(ScopeResolverInterface $resolver) {
         return ($this->parent = $resolver);
+    }
+    
+    /**
+     * @private
+     */
+    public function getDependencies($key) {
+        return isset($this->dependencies[$key]) ? $this->dependencies[$key] : null;
     }
 
     /**
@@ -101,5 +130,32 @@ abstract class AbstractScope implements ScopeResolverInterface {
             throw new \InvalidArgumentException("Scope's variable name must be a string!");
         
         return true;
+    }
+
+    /**
+     * Returns dependencies which will have to be resolved on parsing.
+     * 
+     * @param \Symfony\Component\ExpressionLanguage\TokenStream $stream
+     * @return array        dependencies found in TokenStream
+     */
+    private function fetchDependenciesFrom(SymfonyTokenStream $stream) {
+        $iterable_stream = new TokenStream($stream);
+        
+        $depends_on = array();
+        foreach($iterable_stream as $name_token) {
+            $depends_on[] = $name_token->value;
+        }
+
+        return $depends_on;
+    }
+    
+    /**
+     * @return Lexer
+     */
+    private function getLexer() {
+        if(is_null(self::$lexer))
+            self::$lexer = new Lexer();
+
+        return self::$lexer;
     }
 }
