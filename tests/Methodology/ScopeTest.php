@@ -126,4 +126,46 @@ class ScopeTest extends PHPUnit_Framework_TestCase {
         $this->scope->define('number', 12);
         $this->assertNull($this->scope->getDependencies('number'));
     }
+
+    /**
+     * @group expressions
+     * @covers Methodology\Scope::resolve 
+     */
+    public function testResolveStaticExpressionVariablesOnly() {
+        $this->scope->define('a', 12);
+        $this->scope->define('b', -3);
+        
+        $this->scope->define('add', 'a+b');
+        $this->scope->define('mul', 'a*add');
+        $this->scope->define('foo', 'a*add+b*mul*(-2)');
+        
+        $this->assertEquals($this->scope->resolve('add'), 9);
+        $this->assertEquals($this->scope->resolve('mul'), 12 * 9);
+        $this->assertEquals($this->scope->resolve('foo'), 12*9+(-3)*(12*9)*(-2));
+    }
+
+    /**
+     * @group expressions
+     * @covers Methodology\Scope::resolve
+     * 
+     * @todo    fix
+     */
+    public function testResolveDynamicExpressionVariablesOnly() {
+        $this->scope->define('a', 12);
+        $child = $this->scope->newChild();
+        
+        $grandchild = $child->newChild();   
+        $child->define('add', 'a*a');
+        $grandchild->define('a', 24);
+        
+        $this->assertEquals($grandchild->resolve('add'), 24*24);
+    }
+
+    /**
+     * @expectedException OutOfBoundsException
+     */
+    public function testExpectExceptionWhenDependencyNotResolved() {
+        $this->scope->define('foo', 'bar*bar2');
+        $this->scope->resolve('foo');
+    }
 }

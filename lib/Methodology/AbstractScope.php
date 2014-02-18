@@ -14,8 +14,11 @@ namespace Methodology;
 use Methodology\ScopeResolverInterface;
 use Methodology\Language\TokenStream;
 
+use Symfony\Component\ExpressionLanguage\ExpressionLanguage;
 use Symfony\Component\ExpressionLanguage\TokenStream as SymfonyTokenStream;
 use Symfony\Component\ExpressionLanguage\Lexer;
+use Symfony\Component\ExpressionLanguage\ParsedExpression;
+use Symfony\Component\ExpressionLanguage\Parser;
 
 /**
  * Abstract class which supports basic scope manipulation.
@@ -49,18 +52,40 @@ abstract class AbstractScope implements ScopeResolverInterface {
      * @var Lexer
      */
     protected static $lexer = null;
-    
+   
     /**
      * {@inheritdoc}
      * 
      * @throws \InvalidArgumentException    when key is not valid  
      * @throws \OutOfBoundsException        when key is not found in current scope and there is no parent
+     * 
+     * @todo    Disallow infinite recursive calls.
+     * @todo    Register functions of scope in ExpressionLanguage. 
      */
     public function resolve($key) {
         if($this->isNameValid($key) 
             && (isset($this->values[$key]) || array_key_exists($key, $this->values))) {
+            
+            $value = $this->values[$key];
+            
+            if($this->isExpression($value)) {
+                $dependencies = array();
                 
-            return $this->values[$key];
+                if($this->hasDependencies($key)) {
+                    foreach($this->getDependencies($key) as $dependency) {
+                        try {
+                            $dependencies[$dependency] = $this->resolve($dependency);
+                            
+                        } catch(\OutOfBoundsException $e) {
+                            throw new \OutOfBoundsException("Could not resolve dependency `$dependency` of `$key` key!");
+                        }
+                    }   
+                }
+                
+                $value = $this->getParsedExpression($value, $key)->getNodes()->evaluate(array(), $dependencies); 
+            }
+            
+            return $value;
         }
         
         if(!is_null($this->parent))
@@ -97,12 +122,19 @@ abstract class AbstractScope implements ScopeResolverInterface {
     public function setParent(ScopeResolverInterface $resolver) {
         return ($this->parent = $resolver);
     }
+  
+    /**
+     * @return bool 
+     */
+    public function hasDependencies($key) {
+        return $this->isNameValid($key) && isset($this->dependencies[$key]);
+    }
     
     /**
      * @private
      */
     public function getDependencies($key) {
-        return isset($this->dependencies[$key]) ? $this->dependencies[$key] : null;
+        return $this->hasDependencies($key) ? $this->dependencies[$key] : null;
     }
 
     /**
@@ -157,5 +189,26 @@ abstract class AbstractScope implements ScopeResolverInterface {
             self::$lexer = new Lexer();
 
         return self::$lexer;
+    }
+
+    /**
+     * Temporary solution for parsing expressions.
+     * 
+     * @param \Symfony\Component\ExpressionLanguage\TokenStream $stream
+     * @param string $key
+     * @return \Symfony\Component\ExpressionLanguage\ParsedExpression
+     */
+    private function getParsedExpression(SymfonyTokenStream $stream, $key) {
+        $parser = new Parser(array());
+        
+        $nodes = $parser->parse(clone $stream, $this->getDependencies($key));
+        return new ParsedExpression('', $nodes);
+    }
+    
+    /**
+     * @return bool
+     */ 
+    private function isExpression($value) {
+        return $value instanceof SymfonyTokenStream;
     }
 }
