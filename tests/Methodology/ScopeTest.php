@@ -167,4 +167,28 @@ class ScopeTest extends PHPUnit_Framework_TestCase {
         $this->scope->define('foo', 'bar*bar2');
         $this->scope->resolve('foo');
     }
+    
+    /**
+     * @covers Methodology\Scope::resolve             
+     * @expectedException RuntimeException
+     */
+    public function testExpectExceptionResolvingMutualExpressions() {
+        $this->scope->define('bar', 'foo');
+        $child = $this->scope->newChild()->newChild(); 
+        $child->define('qwe', 'bar');
+        
+        $gchild = $child->newChild();
+        $gchild->define('foo', 'qwe');
+
+        $gchild->newChild()->resolve('foo');
+    }
+
+    /**
+     * @covers Methodology\Scope::resolve             
+     * @expectedException RuntimeException
+     */    
+    public function testExpectExceptionOnSingleDependencyRecursion() {
+        $this->scope->define('foo', 'foo*2');
+        $this->scope->resolve('foo');
+    }
 }

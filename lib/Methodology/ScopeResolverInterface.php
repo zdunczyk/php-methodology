@@ -33,6 +33,7 @@ interface ScopeResolverInterface {
      * 
      * @internal
      * @param   ScopeResolverInterface  $origin     scope to resolve all following dependencies in
+     * @param   ResolveChain            $chain
      */
-    public function forwardResolve($key, ScopeResolverInterface $origin);
+    public function forwardResolve($key, ScopeResolverInterface $origin, ResolveChain $chain);
 }

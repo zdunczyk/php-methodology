@@ -13,6 +13,7 @@ namespace Methodology;
 
 use Methodology\ScopeResolverInterface;
 use Methodology\Language\TokenStream;
+use Methodology\ResolveChain;
 
 use Symfony\Component\ExpressionLanguage\ExpressionLanguage;
 use Symfony\Component\ExpressionLanguage\TokenStream as SymfonyTokenStream;
@@ -59,11 +60,10 @@ abstract class AbstractScope implements ScopeResolverInterface {
      * @throws \InvalidArgumentException    when key is not valid  
      * @throws \OutOfBoundsException        when key is not found in current scope and there is no parent
      * 
-     * @todo    Disallow infinite recursive calls.
      * @todo    Register functions of scope in ExpressionLanguage. 
      */
     public function resolve($key) {
-        return $this->forwardResolve($key, $this); 
+        return $this->forwardResolve($key, $this, new ResolveChain); 
     }
 
     /**
@@ -73,10 +73,13 @@ abstract class AbstractScope implements ScopeResolverInterface {
      * @throws \OutOfBoundsException
      * @throws \InvalidArgumentException
      */
-    public function forwardResolve($key, ScopeResolverInterface $origin) {
+    public function forwardResolve($key, ScopeResolverInterface $origin, ResolveChain $chain) {
+        if($chain->has($key)) 
+            throw new \RuntimeException("Possible infinite loop when resolving `$key` variable");   
+        
         if($this->isNameValid($key) 
             && (isset($this->values[$key]) || array_key_exists($key, $this->values))) {
-           
+            
             $value = $this->values[$key];
             
             if($this->isExpression($value)) {
@@ -85,7 +88,10 @@ abstract class AbstractScope implements ScopeResolverInterface {
                 if($this->hasDependencies($key)) {
                     foreach($this->getDependencies($key) as $dependency) {
                         try {
-                            $dependencies[$dependency] = $origin->resolve($dependency);
+                            $branch = clone($chain);
+                            $branch->push($key);
+                            
+                            $dependencies[$dependency] = $origin->forwardResolve($dependency, $origin, $branch);
                             
                         } catch(\OutOfBoundsException $e) {
                             throw new \OutOfBoundsException("Could not resolve dependency `$dependency` of `$key` key!");
@@ -100,7 +106,7 @@ abstract class AbstractScope implements ScopeResolverInterface {
         }
         
         if(!is_null($this->parent))
-            return $this->parent->forwardResolve($key, $origin);             
+            return $this->parent->forwardResolve($key, $origin, $chain);             
 
         throw new \OutOfBoundsException("Could not resolve `$key` key!");
     }
