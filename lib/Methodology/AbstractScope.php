@@ -63,9 +63,20 @@ abstract class AbstractScope implements ScopeResolverInterface {
      * @todo    Register functions of scope in ExpressionLanguage. 
      */
     public function resolve($key) {
+        return $this->forwardResolve($key, $this); 
+    }
+
+    /**
+     * {@inheritdoc} 
+     * 
+     * @internal
+     * @throws \OutOfBoundsException
+     * @throws \InvalidArgumentException
+     */
+    public function forwardResolve($key, ScopeResolverInterface $origin) {
         if($this->isNameValid($key) 
             && (isset($this->values[$key]) || array_key_exists($key, $this->values))) {
-            
+           
             $value = $this->values[$key];
             
             if($this->isExpression($value)) {
@@ -74,7 +85,7 @@ abstract class AbstractScope implements ScopeResolverInterface {
                 if($this->hasDependencies($key)) {
                     foreach($this->getDependencies($key) as $dependency) {
                         try {
-                            $dependencies[$dependency] = $this->resolve($dependency);
+                            $dependencies[$dependency] = $origin->resolve($dependency);
                             
                         } catch(\OutOfBoundsException $e) {
                             throw new \OutOfBoundsException("Could not resolve dependency `$dependency` of `$key` key!");
@@ -89,7 +100,7 @@ abstract class AbstractScope implements ScopeResolverInterface {
         }
         
         if(!is_null($this->parent))
-            return $this->parent->resolve($key);             
+            return $this->parent->forwardResolve($key, $origin);             
 
         throw new \OutOfBoundsException("Could not resolve `$key` key!");
     }

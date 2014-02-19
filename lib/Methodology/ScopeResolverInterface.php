@@ -21,8 +21,18 @@ interface ScopeResolverInterface {
     /**
      * Resolves variable in the scope of implementatation.
      * 
+     * @uses    forwardResolve
      * @param   string  $key    reference identifier             
      * @return  mixed   variable or callable bound to key in current scope  
      */
     public function resolve($key);
+
+    /**
+     * Preserves origin scope between parent - child calls. All expression 
+     * dependencies are resolved in origin.
+     * 
+     * @internal
+     * @param   ScopeResolverInterface  $origin     scope to resolve all following dependencies in
+     */
+    public function forwardResolve($key, ScopeResolverInterface $origin);
 }

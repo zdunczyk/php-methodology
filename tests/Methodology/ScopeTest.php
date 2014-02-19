@@ -26,7 +26,7 @@ class ScopeTest extends PHPUnit_Framework_TestCase {
         $parent = $this->getMock('Methodology\ScopeResolverInterface');
 
         $parent ->expects($this->once())
-                ->method('resolve')
+                ->method('forwardResolve')
                 ->with($this->equalTo('func'));
 
         $this->scope->setParent($parent);
@@ -147,8 +147,6 @@ class ScopeTest extends PHPUnit_Framework_TestCase {
     /**
      * @group expressions
      * @covers Methodology\Scope::resolve
-     * 
-     * @todo    fix
      */
     public function testResolveDynamicExpressionVariablesOnly() {
         $this->scope->define('a', 12);
@@ -158,6 +156,7 @@ class ScopeTest extends PHPUnit_Framework_TestCase {
         $child->define('add', 'a*a');
         $grandchild->define('a', 24);
         
+        $this->assertEquals($child->resolve('add'), 12*12);
         $this->assertEquals($grandchild->resolve('add'), 24*24);
     }
 
