@@ -191,4 +191,12 @@ class ScopeTest extends PHPUnit_Framework_TestCase {
         $this->scope->define('foo', 'foo*2');
         $this->scope->resolve('foo');
     }
+
+    /**
+     * @covers Methodology\Scope::define 
+     */
+    public function testExpectDefinedCallableToBeContext() {
+        $this->scope->define('bar', function() { });
+        $this->assertInstanceOf('Methodology\Context', $this->scope->resolve('bar'));
+    }
 }

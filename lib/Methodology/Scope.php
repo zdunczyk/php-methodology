@@ -29,4 +29,13 @@ class Scope extends AbstractScope {
     public function newChild() {
         return parent::newChild();
     }
+
+    public function define($key, $value) {
+        if(is_callable($value)) {
+            $value = new Context($value);
+            $value->setParent($this);
+        }
+        
+        return parent::define($key, $value);
+    }
 }

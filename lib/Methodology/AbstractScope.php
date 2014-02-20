@@ -118,7 +118,7 @@ abstract class AbstractScope implements ScopeResolverInterface {
      * @param string    $key                identifier of value
      * @param mixed     $value              value of variable to define 
      */
-    public function define($key, $value) {
+    protected function define($key, $value) {
         $this->isNameValid($key);
        
         if(is_string($value)) {
