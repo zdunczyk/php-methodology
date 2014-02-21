@@ -33,4 +33,34 @@ class Context extends AbstractScope {
         $callable = $this->callable->bindTo(new ContextProxy($this));
         return call_user_func_array($callable, func_get_args()); 
     }
+
+    /**
+     * @see     AbstractScope::define
+     * @param   string $key
+     * @param   mixed $value
+     * @return  $this
+     */
+    public function override($mixed, $value = null) {
+        if(is_array($mixed) && is_null($value)) {
+            
+            foreach($mixed as $key => $value)
+                $this->override($key, $value);
+            
+        } else {
+            parent::define($mixed, $value); 
+        }
+    
+        return $this;
+    }
+
+    /**
+     * Shortcut for sequential clone and override.
+     * 
+     * @see Context::override 
+     */
+    public function overclone($mixed, $value = null) {
+        $cloned = clone $this;
+        
+        return $cloned->override($mixed, $value);
+    }
 }
