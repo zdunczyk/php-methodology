@@ -30,6 +30,7 @@ class Context extends AbstractScope {
      * @return mixed
      */
     public function __invoke() {
-        return call_user_func_array($this->callable, func_get_args()); 
+        $callable = $this->callable->bindTo(new ContextProxy($this));
+        return call_user_func_array($callable, func_get_args()); 
     }
 }

@@ -10,6 +10,7 @@
  */
 
 use Methodology\Context;
+use Methodology\Scope;
 
 class ContextTest extends PHPUnit_Framework_TestCase {
 
@@ -26,5 +27,22 @@ class ContextTest extends PHPUnit_Framework_TestCase {
         
         $this->assertEquals($foo, 'bar');
         $this->assertEquals($result, 'bar');
+    }
+    
+    /**
+     * @covers Context::__invoke
+     */
+    public function testResolvingParentVariableByThis() {
+        $scope = new Scope();
+        $scope->define('bar', 765);
+
+        $child = $scope->newChild();
+        $child->define('foo', function() {
+            return $this->bar;    
+        });
+        
+        $foo = $child->resolve('foo');
+        
+        $this->assertEquals($foo(), 765);
     }
 }
