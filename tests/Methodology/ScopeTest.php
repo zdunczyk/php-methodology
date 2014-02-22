@@ -199,4 +199,11 @@ class ScopeTest extends PHPUnit_Framework_TestCase {
         $this->scope->define('bar', function() { });
         $this->assertInstanceOf('Methodology\Context', $this->scope->resolve('bar'));
     }
+    
+    /**
+     * @covers Methodology\Language\Lexer::tokenize 
+     */
+    public function testCanDollarPrefixedNumericVarsBeDefined() {
+        $this->scope->define('dollar_prefixed', ' $12 * (foo+$1)');
+    }
 }

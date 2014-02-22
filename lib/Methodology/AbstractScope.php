@@ -13,11 +13,11 @@ namespace Methodology;
 
 use Methodology\ScopeResolverInterface;
 use Methodology\Language\TokenStream;
+use Methodology\Language\Lexer;
 use Methodology\ResolveChain;
 
 use Symfony\Component\ExpressionLanguage\ExpressionLanguage;
 use Symfony\Component\ExpressionLanguage\TokenStream as SymfonyTokenStream;
-use Symfony\Component\ExpressionLanguage\Lexer;
 use Symfony\Component\ExpressionLanguage\ParsedExpression;
 use Symfony\Component\ExpressionLanguage\Parser;
 
