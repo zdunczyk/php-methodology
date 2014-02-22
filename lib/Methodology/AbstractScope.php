@@ -81,34 +81,14 @@ abstract class AbstractScope implements ScopeResolverInterface {
             $value = $this->values[$key];
             
             if($this->isExpression($value)) {
-                $dependencies = array();
-                $functions = array();
+                $branch = clone($chain);
+                $branch->push($key);
                 
-                if($this->hasDependencies($key)) {
-                    foreach($this->getDependencies($key) as $dependency) {
-                        try {
-                            $branch = clone($chain);
-                            $branch->push($key);
-                            
-                            $resolved = $origin->forwardResolve($dependency, $origin, $branch); 
-                            
-                            if($resolved instanceof Context) {
-                                $functions[$dependency] = array(
-                                    'compiler' => NULL,
-                                    'evaluator' => function() use ($resolved) {
-                                        return call_user_func_array($resolved, array_slice(func_get_args(), 1));
-                                    }
-                                );
-                            } else                                 
-                                $dependencies[$dependency] = $resolved;                             
-                            
-                        } catch(\OutOfBoundsException $e) {
-                            throw new \OutOfBoundsException("Could not resolve dependency `$dependency` of `$key` key!");
-                        }
-                    }   
+                try {
+                    $value = $this->forwardEvaluate($origin, $branch, $value, $this->getDependencies($key));
+                } catch(\OutOfBoundsException $e) {
+                    throw new \OutOfBoundsException("Could not resolve dependency of `$key` key!");
                 }
-                
-                $value = $this->getParsedExpression($value, $key, $functions)->getNodes()->evaluate($functions, $dependencies); 
             }
             
             return $value;
@@ -130,6 +110,53 @@ abstract class AbstractScope implements ScopeResolverInterface {
     protected function define($key, $value) {
         $this->isNameValid($key);
         list($this->values[$key], $this->dependencies[$key]) = $this->tokenize($value); 
+    }
+   
+    /**
+     * Evaluates TokenStream in current scope, with specific dependencies and 
+     * additional variables.
+     *  
+     * @param string $expression
+     * @param array $dependencies
+     * @param array $additionals    optional
+     * @return mixed
+     */
+    protected function evaluate(SymfonyTokenStream $expression, $dependencies, $additionals = array()) {
+        return $this->forwardEvaluate($this, new ResolveChain, $expression, $dependencies, $additionals);
+    }
+    
+    /**
+     * @see AbstractScope::forwardResolve
+     * @return type
+     * @throws \Methodology\OutOfBoundsException
+     */
+    protected function forwardEvaluate(ScopeResolverInterface $origin, ResolveChain $chain, SymfonyTokenStream $expression, $dependencies, $additionals = array()) {
+        $variables = is_array($additionals) ? $additionals : array();
+        $functions = array();
+        
+        if(!empty($dependencies)) {
+            foreach($dependencies as $dependency) {
+                try {
+                    $resolved = $origin->forwardResolve($dependency, $origin, $chain); 
+                    
+                    if($resolved instanceof Context) {
+                        $functions[$dependency] = array(
+                            'compiler' => NULL,
+                            'evaluator' => function() use ($resolved) {
+                                return call_user_func_array($resolved, array_slice(func_get_args(), 1));
+                            }
+                        );
+                    } else                                 
+                        $variables[$dependency] = $resolved;                             
+                    
+                } catch(\OutOfBoundsException $e) {
+                    /** @todo specify problematic $dependency */
+                    throw $e;               
+                } 
+            }   
+        }
+        
+        return $this->getParsedExpression($expression, $dependencies, $functions)->getNodes()->evaluate($functions, $variables); 
     }
    
     /**
@@ -235,10 +262,10 @@ abstract class AbstractScope implements ScopeResolverInterface {
      * @param string $key
      * @return \Symfony\Component\ExpressionLanguage\ParsedExpression
      */
-    private function getParsedExpression(SymfonyTokenStream $stream, $key, $functions) {
+    private function getParsedExpression(SymfonyTokenStream $stream, $dependencies, $functions) {
         $parser = new Parser($functions);
         
-        $nodes = $parser->parse(clone $stream, $this->getDependencies($key));
+        $nodes = $parser->parse(clone $stream, $dependencies);
         return new ParsedExpression('', $nodes);
     }
     
