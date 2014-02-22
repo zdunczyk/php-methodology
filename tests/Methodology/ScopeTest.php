@@ -206,4 +206,22 @@ class ScopeTest extends PHPUnit_Framework_TestCase {
     public function testCanDollarPrefixedNumericVarsBeDefined() {
         $this->scope->define('dollar_prefixed', ' $12 * (foo+$1)');
     }
+
+    public function testResolvingFunctionsInExpressions() {
+        $this->scope->define('add', function($a, $b) {
+            return $a + $b;
+        });
+        
+        $this->scope->define('pow', function($a, $p) {
+            return pow($a, $p);
+        });
+
+        $this->scope->define('render', function($var) {
+            return "result: $var";
+        });
+        
+        $this->scope->define('result', 'render(pow(add(2, 3), 3))');
+        $rendered = $this->scope->resolve('result');
+        $this->assertEquals($rendered, "result: " . ((2+3)*(2+3)*(2+3))); 
+    }
 }

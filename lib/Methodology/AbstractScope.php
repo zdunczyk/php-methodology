@@ -59,8 +59,6 @@ abstract class AbstractScope implements ScopeResolverInterface {
      * 
      * @throws \InvalidArgumentException    when key is not valid  
      * @throws \OutOfBoundsException        when key is not found in current scope and there is no parent
-     * 
-     * @todo    Register functions of scope in ExpressionLanguage. 
      */
     public function resolve($key) {
         return $this->forwardResolve($key, $this, new ResolveChain); 
@@ -84,6 +82,7 @@ abstract class AbstractScope implements ScopeResolverInterface {
             
             if($this->isExpression($value)) {
                 $dependencies = array();
+                $functions = array();
                 
                 if($this->hasDependencies($key)) {
                     foreach($this->getDependencies($key) as $dependency) {
@@ -91,7 +90,17 @@ abstract class AbstractScope implements ScopeResolverInterface {
                             $branch = clone($chain);
                             $branch->push($key);
                             
-                            $dependencies[$dependency] = $origin->forwardResolve($dependency, $origin, $branch);
+                            $resolved = $origin->forwardResolve($dependency, $origin, $branch); 
+                            
+                            if($resolved instanceof Context) {
+                                $functions[$dependency] = array(
+                                    'compiler' => NULL,
+                                    'evaluator' => function() use ($resolved) {
+                                        return call_user_func_array($resolved, array_slice(func_get_args(), 1));
+                                    }
+                                );
+                            } else                                 
+                                $dependencies[$dependency] = $resolved;                             
                             
                         } catch(\OutOfBoundsException $e) {
                             throw new \OutOfBoundsException("Could not resolve dependency `$dependency` of `$key` key!");
@@ -99,7 +108,7 @@ abstract class AbstractScope implements ScopeResolverInterface {
                     }   
                 }
                 
-                $value = $this->getParsedExpression($value, $key)->getNodes()->evaluate(array(), $dependencies); 
+                $value = $this->getParsedExpression($value, $key, $functions)->getNodes()->evaluate($functions, $dependencies); 
             }
             
             return $value;
@@ -226,8 +235,8 @@ abstract class AbstractScope implements ScopeResolverInterface {
      * @param string $key
      * @return \Symfony\Component\ExpressionLanguage\ParsedExpression
      */
-    private function getParsedExpression(SymfonyTokenStream $stream, $key) {
-        $parser = new Parser(array());
+    private function getParsedExpression(SymfonyTokenStream $stream, $key, $functions) {
+        $parser = new Parser($functions);
         
         $nodes = $parser->parse(clone $stream, $this->getDependencies($key));
         return new ParsedExpression('', $nodes);
