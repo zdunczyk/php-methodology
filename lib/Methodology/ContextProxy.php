@@ -35,5 +35,20 @@ class ContextProxy {
     public function __get($key) {
         return $this->context->resolve($key);    
     }
+
+    /**
+     * When is able to resolve $key returns its value, otherwise returns default. 
+     * 
+     * @param string    $key
+     * @param callable  $code_block
+     * @return mixed
+     */
+    public function _placeholder($key, $default) {
+        try {
+            return $this->__get($key);
+        } catch(\Exception $e) {
+            return $default;
+        }
+    }
 }
 
