@@ -120,14 +120,25 @@ abstract class AbstractScope implements ScopeResolverInterface {
      */
     protected function define($key, $value) {
         $this->isNameValid($key);
-       
+        list($this->values[$key], $this->dependencies[$key]) = $this->tokenize($value); 
+    }
+   
+    /**
+     * Returns TokenStream with its dependencies.
+     * 
+     * @param type $value
+     * @return array
+     */
+    protected function tokenize($value) {
+        $dependencies = null;
+        
         if(is_string($value)) {
             $value = $this->getLexer()->tokenize($value); 
             
-            $this->dependencies[$key] = $this->fetchDependenciesFrom($value);
+            $dependencies = $this->fetchDependenciesFrom($value);
         }
-        
-        $this->values[$key] = $value;
+       
+        return array($value, $dependencies);
     }
     
     /**

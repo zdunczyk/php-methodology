@@ -92,4 +92,30 @@ class ContextTest extends PHPUnit_Framework_TestCase {
         $this->assertNotEquals($child->resolve('foo')->__invoke(), 567);
         $this->assertEquals($cloned(), 567);
     }
+    
+    /**
+     * @covers Context::__construct
+     */
+    public function testFetchingArgumentsOfClosure() {
+        $context = new Context(function($a, 
+                                        $foo = 'foo($1)*23', 
+                                        $bar = 'bar(asd)', 
+                                        $nth = null) {
+            // test only arguments 
+        });
+        
+        $params = $context->getParams();
+        $this->assertCount(4, $params);
+        
+        $this->assertEquals($params[0]['name'], 'a');
+        $this->assertEquals($params[2]['name'], 'bar'); 
+
+        $this->assertTrue($params[1]['expression']);
+        $this->assertFalse($params[0]['expression']);
+
+        $this->assertTrue($params[2]['value'] instanceof 
+                \Symfony\Component\ExpressionLanguage\TokenStream);
+
+        $this->assertNull($params[3]['value']);
+    }
 }

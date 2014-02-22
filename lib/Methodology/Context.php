@@ -19,11 +19,35 @@ class Context extends AbstractScope {
      * @var callable    function wrapped by context
      */
     protected $callable;
+
+    /**
+     * @var array
+     */
+    protected $params;
     
     public function __construct(callable $function) {
+        $ref_function = new \ReflectionFunction($function);
+        
+        foreach ($ref_function->getParameters() as $param) {
+            $next_param = &$this->params[];
+            $next_param = array(
+                'name' => $param->getName(),
+                'expression' => $param->isOptional() 
+            );
+            
+            if($param->isOptional()) {
+                list($next_param['value'], $next_param['dependencies']) = 
+                    $this->tokenize($param->getDefaultValue());
+            }
+        }
+        
         $this->callable = $function;
     }
 
+    public function getParams() {
+        return $this->params;    
+    }
+    
     /**
      * Invokes wrapped function.
      * 
