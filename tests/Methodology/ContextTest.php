@@ -132,13 +132,53 @@ class ContextTest extends PHPUnit_Framework_TestCase {
         $this->assertEquals($scope->resolve('c'), $c);
         $this->assertEquals($scope->resolve('b'), $b); 
        
-        $lexical = $this;
-        $scope->define('foo', function($x, $y = 'c+2', $z = '!b') use ($lexical, $a, $b, $c) {
-            $lexical->assertEquals($x, $a);
-            $lexical->assertEquals($y, $c+2);
-            $lexical->assertEquals($z, !$b);
+        $testcase = $this;
+        $scope->define('foo', function($x, $y = 'c+2', $z = '!b') use ($testcase, $a, $b, $c) {
+            $testcase->assertEquals($x, $a);
+            $testcase->assertEquals($y, $c+2);
+            $testcase->assertEquals($z, !$b);
         });
 
         $scope->resolve('foo')->__invoke($a);
+    }
+
+    /**
+     * @covers Context::__invoke
+     */
+    public function testResolvingPositionalParameters() {
+        $a1 = 3; $a2 = 4; $a3 = 5; $a4 = 12;
+        $testcase = $this;
+        $context = new Context(function($x, $y = '-$2', $z = '($1+$2)*$4') use ($testcase, $a1, $a2, $a3, $a4) {
+            $testcase->assertEquals($x, $a1);
+            $testcase->assertEquals($y, -$a2);
+            $testcase->assertEquals($z, ($a1+$a2)*$a4);
+        });
+
+        $context($a1, $a2, $a3, $a4);
+    }
+    
+    /**
+     * @covers Context::__invoke
+     */
+    public function testResolvingArgumentsFunctionDependency() {
+        $scope = new Scope();
+
+        $sub = function($a, $b) {
+            return $a - $b;
+        };
+        
+        $val = function($val) {
+            return 'val: ' . $val;        
+        };
+        
+        $scope->define('sub', $sub);
+        $scope->define('val', $val);
+
+        $testcase = $this;
+        $scope->define('dependent', function($a, $b = 'val(sub(5,sub(2,3)))') use ($testcase, $val, $sub) {
+            $testcase->assertEquals($b, $val($sub(5,$sub(2,3))));                        
+        });
+
+        $scope->resolve('dependent')->__invoke(3);
     }
 }
