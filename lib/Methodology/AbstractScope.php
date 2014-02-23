@@ -136,23 +136,25 @@ abstract class AbstractScope implements ScopeResolverInterface {
         
         if(!empty($dependencies)) {
             foreach($dependencies as $dependency) {
-                try {
-                    $resolved = $origin->forwardResolve($dependency, $origin, $chain); 
-                    
-                    if($resolved instanceof Context) {
-                        $functions[$dependency] = array(
-                            'compiler' => NULL,
-                            'evaluator' => function() use ($resolved) {
-                                return call_user_func_array($resolved, array_slice(func_get_args(), 1));
-                            }
-                        );
-                    } else                                 
-                        $variables[$dependency] = $resolved;                             
-                    
-                } catch(\OutOfBoundsException $e) {
-                    /** @todo specify problematic $dependency */
-                    throw $e;               
-                } 
+                if(!isset($variables[$dependency])) {
+                    try {
+                        $resolved = $origin->forwardResolve($dependency, $origin, $chain); 
+                        
+                        if($resolved instanceof Context) {
+                            $functions[$dependency] = array(
+                                'compiler' => NULL,
+                                'evaluator' => function() use ($resolved) {
+                                    return call_user_func_array($resolved, array_slice(func_get_args(), 1));
+                                }
+                            );
+                        } else                                 
+                            $variables[$dependency] = $resolved;                             
+                        
+                    } catch(\OutOfBoundsException $e) {
+                        /** @todo specify problematic $dependency */
+                        throw $e;               
+                    }
+                }
             }   
         }
         

@@ -118,4 +118,27 @@ class ContextTest extends PHPUnit_Framework_TestCase {
 
         $this->assertNull($params[3]['value']);
     }
+
+    /**
+     * @covers Context::__invoke
+     */
+    public function testResolvingArgumentsVariableDependency() {
+        $c = 4; $b = true; $a = 2;
+        
+        $scope = new Scope();
+        $scope->define('c', $c);
+        $scope->define('b', $b);
+       
+        $this->assertEquals($scope->resolve('c'), $c);
+        $this->assertEquals($scope->resolve('b'), $b); 
+       
+        $lexical = $this;
+        $scope->define('foo', function($x, $y = 'c+2', $z = '!b') use ($lexical, $a, $b, $c) {
+            $lexical->assertEquals($x, $a);
+            $lexical->assertEquals($y, $c+2);
+            $lexical->assertEquals($z, !$b);
+        });
+
+        $scope->resolve('foo')->__invoke($a);
+    }
 }

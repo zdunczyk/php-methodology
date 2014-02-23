@@ -24,5 +24,15 @@ class Lexer extends SymfonyLexer {
     public function tokenize($expression) {
         return parent::tokenize(preg_replace('/[$](\d+)/','_${1}', $expression)); 
     }
+
+    /**
+     * Checks is variable name a valid positional parameter.
+     * 
+     * @param string $name
+     */
+    public static function getPositionalParameter($name) {
+        preg_match('/^_(\d+)$/', $name, $found);
+        return isset($found[1]) ? $found[1] : null;
+    }
 }
 

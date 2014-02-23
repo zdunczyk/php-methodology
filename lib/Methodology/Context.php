@@ -11,6 +11,8 @@
 
 namespace Methodology;
 
+use Methodology\Language\Lexer;
+
 /**
  * @author Tomasz Zduńczyk
  */
@@ -23,7 +25,7 @@ class Context extends AbstractScope {
     /**
      * @var array
      */
-    protected $params;
+    protected $params = array();
     
     public function __construct(callable $function) {
         $ref_function = new \ReflectionFunction($function);
@@ -32,10 +34,15 @@ class Context extends AbstractScope {
             $next_param = &$this->params[];
             $next_param = array(
                 'name' => $param->getName(),
-                'expression' => $param->isOptional() 
+                'optional' => $param->isOptional()
             );
+
+            if($next_param['optional'])
+                $next_param['value'] = $param->getDefaultValue();
+           
+            $next_param['expression'] = $next_param['optional'] && is_string($next_param['value']);
             
-            if($param->isOptional()) {
+            if($next_param['expression']) {
                 list($next_param['value'], $next_param['dependencies']) = 
                     $this->tokenize($param->getDefaultValue());
             }
@@ -54,8 +61,40 @@ class Context extends AbstractScope {
      * @return mixed
      */
     public function __invoke() {
+        $arguments = func_get_args();
+        $evaluated = array();
+        
+        foreach($this->params as $key => $param) {
+            if($param['optional']) {
+                $evaluated[$key] = $param['value'];
+            
+                if($param['expression']) {
+                    $positional_params = array();
+                    
+                    foreach($param['dependencies'] as $dependency) {
+                        if(!is_null($positional = Lexer::getPositionalParameter($dependency))) {
+                            $arg_position = (int)($positional-1);
+                            
+                            if(isset($arguments[$arg_position])) {
+                                $positional_params[$dependency] = $arguments[$arg_position];    
+                            }
+                        }
+                    }
+                    
+                    try {
+                        $evaluated[$key] = $this->evaluate($param['value'], $param['dependencies'], $positional_params);
+                    } catch(\OutOfBoundsException $e) {
+                        /** @todo add proper message */
+                        throw $e;
+                    }
+                }
+            } else if(isset($arguments[$key])) {
+                $evaluated[$key] = $arguments[$key];
+            }
+        }
+        
         $callable = $this->callable->bindTo(new ContextProxy($this));
-        return call_user_func_array($callable, func_get_args()); 
+        return call_user_func_array($callable, $evaluated); 
     }
 
     /**
