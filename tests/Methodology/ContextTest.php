@@ -181,4 +181,25 @@ class ContextTest extends PHPUnit_Framework_TestCase {
 
         $scope->resolve('dependent')->__invoke(3);
     }
+    
+    /**
+     * @covers Context::__invoke
+     * @covers ContextProxy::_stopDependencyChain
+     */
+    public function testStopDependencyChain() {
+        $scope = new Scope(); 
+        
+        $scope->define('foo', function() {
+            $this->_stopDependencyChain();
+            return 'foo';
+        });
+        
+        $testcase = $this;
+        $scope->define('bar', function($a = 'foo()') use ($testcase) {
+            $testcase->assertTrue(false);
+            return 'bar'; 
+        });
+
+        $this->assertEquals($scope->resolve('bar')->__invoke(), 'foo');
+    }
 }

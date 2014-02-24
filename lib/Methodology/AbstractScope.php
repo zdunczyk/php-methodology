@@ -121,8 +121,8 @@ abstract class AbstractScope implements ScopeResolverInterface {
      * @param array $additionals    optional
      * @return mixed
      */
-    protected function evaluate(SymfonyTokenStream $expression, $dependencies, $additionals = array()) {
-        return $this->forwardEvaluate($this, new ResolveChain, $expression, $dependencies, $additionals);
+    protected function evaluate(SymfonyTokenStream $expression, $dependencies, $additionals = array(), &$report = array()) {
+        return $this->forwardEvaluate($this, new ResolveChain, $expression, $dependencies, $additionals, $report);
     }
     
     /**
@@ -130,7 +130,7 @@ abstract class AbstractScope implements ScopeResolverInterface {
      * @return type
      * @throws \Methodology\OutOfBoundsException
      */
-    protected function forwardEvaluate(ScopeResolverInterface $origin, ResolveChain $chain, SymfonyTokenStream $expression, $dependencies, $additionals = array()) {
+    protected function forwardEvaluate(ScopeResolverInterface $origin, ResolveChain $chain, SymfonyTokenStream $expression, $dependencies, $additionals = array(), &$report = array()) {
         $variables = is_array($additionals) ? $additionals : array();
         $functions = array();
         
@@ -143,8 +143,11 @@ abstract class AbstractScope implements ScopeResolverInterface {
                         if($resolved instanceof Context) {
                             $functions[$dependency] = array(
                                 'compiler' => NULL,
-                                'evaluator' => function() use ($resolved) {
-                                    return call_user_func_array($resolved, array_slice(func_get_args(), 1));
+                                'evaluator' => function() use ($resolved, &$report) {
+                                    $resolved->clearReport();
+                                        $result = call_user_func_array($resolved, array_slice(func_get_args(), 1));
+                                    $report += $resolved->getReport();
+                                    return $result;
                                 }
                             );
                         } else                                 

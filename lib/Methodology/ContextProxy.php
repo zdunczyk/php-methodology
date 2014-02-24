@@ -21,7 +21,7 @@ class ContextProxy {
      * @var Context
      */
     protected $context;
-    
+
     public function __construct(Context $context) {
         $this->context = $context;    
     }
@@ -49,6 +49,10 @@ class ContextProxy {
         } catch(\Exception $e) {
             return $default;
         }
+    }
+
+    public function _stopDependencyChain() {
+        $this->context->report(Context::REPORT_DEPENDENCY_CHAIN_STOPPED);
     }
 }
 

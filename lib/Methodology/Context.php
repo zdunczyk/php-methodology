@@ -26,6 +26,15 @@ class Context extends AbstractScope {
      * @var array
      */
     protected $params = array();
+
+    /**
+     * Report of invoke call.
+     * 
+     * @var array
+     */    
+    protected $report = array();
+
+    const REPORT_DEPENDENCY_CHAIN_STOPPED = 1;
     
     public function __construct(callable $function) {
         $ref_function = new \ReflectionFunction($function);
@@ -82,7 +91,12 @@ class Context extends AbstractScope {
                     }
                     
                     try {
-                        $evaluated[$key] = $this->evaluate($param['value'], $param['dependencies'], $positional_params);
+                        $report = array();
+                        $evaluated[$key] = $this->evaluate($param['value'], $param['dependencies'], $positional_params, $report);
+                        
+                        if(in_array(Context::REPORT_DEPENDENCY_CHAIN_STOPPED, $report))
+                            return $evaluated[$key];
+                        
                     } catch(\OutOfBoundsException $e) {
                         /** @todo add proper message */
                         throw $e;
@@ -125,5 +139,28 @@ class Context extends AbstractScope {
         $cloned = clone $this;
         
         return $cloned->override($mixed, $value);
+    }
+
+    /**
+     * Reports action in running Context.
+     * 
+     * @param type $action
+     */
+    public function report($action) {
+        $this->report[] = $action; 
+    }
+    
+    /**
+     * @see Context::report
+     */
+    public function clearReport() {
+        $this->report = array();
+    }
+
+    /**
+     * @return array
+     */
+    public function getReport() {
+        return $this->report;
     }
 }
