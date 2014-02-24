@@ -13,6 +13,8 @@ namespace Methodology;
 
 use Methodology\Language\Lexer;
 
+use Symfony\Component\ExpressionLanguage\TokenStream as SymfonyTokenStream;
+
 /**
  * @author Tomasz Zduńczyk
  */
@@ -78,29 +80,11 @@ class Context extends AbstractScope {
                 $evaluated[$key] = $param['value'];
             
                 if($param['expression']) {
-                    $positional_params = array();
-                    
-                    foreach($param['dependencies'] as $dependency) {
-                        if(!is_null($positional = Lexer::getPositionalParameter($dependency))) {
-                            $arg_position = (int)($positional-1);
-                            
-                            if(isset($arguments[$arg_position])) {
-                                $positional_params[$dependency] = $arguments[$arg_position];    
-                            }
-                        }
-                    }
-                    
-                    try {
-                        $report = array();
-                        $evaluated[$key] = $this->evaluate($param['value'], $param['dependencies'], $positional_params, $report);
+                    $report = array(); 
+                    $evaluated[$key] = $this->evaluatePositional($param['value'], $param['dependencies'], $arguments, $report);
                         
-                        if(in_array(Context::REPORT_DEPENDENCY_CHAIN_STOPPED, $report))
-                            return $evaluated[$key];
-                        
-                    } catch(\OutOfBoundsException $e) {
-                        /** @todo add proper message */
-                        throw $e;
-                    }
+                    if(in_array(Context::REPORT_DEPENDENCY_CHAIN_STOPPED, $report))
+                        return $evaluated[$key];     
                 }
             } else if(isset($arguments[$key])) {
                 $evaluated[$key] = $arguments[$key];
@@ -162,5 +146,30 @@ class Context extends AbstractScope {
      */
     public function getReport() {
         return $this->report;
+    }
+
+
+    /**
+     * @throws \Methodology\OutOfBoundsException
+     */
+    protected function evaluatePositional(SymfonyTokenStream $expression, $dependencies, $arguments, &$report) {
+        $positional_params = array();
+        
+        foreach($dependencies as $dependency) {
+            if(!is_null($positional = Lexer::getPositionalParameter($dependency))) {
+                $arg_position = (int)($positional-1);
+                
+                if(isset($arguments[$arg_position])) {
+                    $positional_params[$dependency] = $arguments[$arg_position];    
+                }
+            }
+        }
+        try {
+            return $this->evaluate($expression, $dependencies, $positional_params, $report);
+            
+        } catch(\OutOfBoundsException $e) {
+            /** @todo add proper message */
+            throw $e;
+        }
     }
 }
