@@ -202,4 +202,64 @@ class ContextTest extends PHPUnit_Framework_TestCase {
 
         $this->assertEquals($scope->resolve('bar')->__invoke(), 'foo');
     }
+
+    /**
+     * @context Context::depends
+     */
+    public function testDependsOnCallable() {
+        $scope = new Scope();
+        $scope->define('test', ($test = 33));
+        $child = $scope->newChild();
+        
+        $child->define('foo', function() {
+            return $this->test;                                        
+        });
+
+        $child->resolve('foo')->depends(function() {
+            $this->_stopDependencyChain();
+            return $this->test + 1;
+        });
+
+        $this->assertEquals($child->resolve('foo')->__invoke(), $test + 1);                        
+    }
+
+    /**
+     * @context Context::depends
+     */
+    public function testDependsOnContext() {
+        $scope = new Scope();
+        
+        $testcase = $this;
+        $scope->define('foo', function() use ($testcase) {
+            $testcase->assertFalse(true);        
+        });
+
+        $bar = new Context(function() {
+            $this->_stopDependencyChain();    
+        });
+
+        $scope->resolve('foo')->depends($bar);
+        $scope->resolve('foo')->__invoke();
+    }
+
+    /**
+     * @context Context::depends 
+     */
+    public function testDependsOnExpression() {
+        $scope = new Scope();
+
+        $scope->define('foo', function() {
+            $this->_stopDependencyChain(); 
+        });
+        
+        $testcase = $this; 
+        $scope->define('bar', function() use ($testcase) {
+            $testcase->assertFalse(true); 
+        });
+
+        $bar = $scope->resolve('bar');
+                
+        $bar->depends('foo()*4');
+        $bar->__invoke();
+    }
 }

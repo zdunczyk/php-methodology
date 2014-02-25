@@ -30,6 +30,16 @@ class Context extends AbstractScope {
     protected $params = array();
 
     /**
+     * @var Context[]
+     */ 
+    protected $precalls = array();
+
+    /**
+     * @var string[]
+     */
+    protected $preexpressions = array();
+    
+    /**
      * Report of invoke call.
      * 
      * @var array
@@ -83,12 +93,28 @@ class Context extends AbstractScope {
                     $report = array(); 
                     $evaluated[$key] = $this->evaluatePositional($param['value'], $param['dependencies'], $arguments, $report);
                         
-                    if(in_array(Context::REPORT_DEPENDENCY_CHAIN_STOPPED, $report))
+                    if(self::wasDependencyChainStopped($report))
                         return $evaluated[$key];     
                 }
             } else if(isset($arguments[$key])) {
                 $evaluated[$key] = $arguments[$key];
             }
+        }
+
+        foreach($this->preexpressions as $exp) {
+            $report = array(); 
+            $expression_result = $this->evaluatePositional($exp['value'], $exp['dependencies'], $arguments, $report);
+                
+            if(self::wasDependencyChainStopped($report))
+                return $expression_result;            
+        }
+
+        foreach($this->precalls as $call) {
+            $call->clearReport();
+            $precall_result = $call();
+            
+            if(self::wasDependencyChainStopped($call->getReport())) 
+                return $precall_result;
         }
         
         $callable = $this->callable->bindTo(new ContextProxy($this));
@@ -125,6 +151,31 @@ class Context extends AbstractScope {
         return $cloned->override($mixed, $value);
     }
 
+    public function depends($mixed) {
+        /** @todo when array is passed it should overwrite params default values */
+        if($mixed instanceof Context) {
+            $this->addPrecall($mixed);
+            return $mixed;
+            
+        } else if(is_callable($mixed)) {
+            $context = new Context($mixed);
+            $context->setParent($this->parent);
+            
+            $this->addPrecall($context);
+            return $context;
+            
+        } else if(is_string($mixed)) {
+            list($preexp_value, $preexp_dep) = 
+                    $this->tokenize($mixed);
+            
+            $this->addPreexpression($preexp_value, $preexp_dep);
+            return null;
+            
+        } else {
+            throw new Exception('Wrong dependency type');    
+        }
+    }
+
     /**
      * Reports action in running Context.
      * 
@@ -146,6 +197,11 @@ class Context extends AbstractScope {
      */
     public function getReport() {
         return $this->report;
+    }
+
+
+    public static function wasDependencyChainStopped($report) {
+        return in_array(Context::REPORT_DEPENDENCY_CHAIN_STOPPED, $report);        
     }
 
 
@@ -171,5 +227,13 @@ class Context extends AbstractScope {
             /** @todo add proper message */
             throw $e;
         }
+    }
+
+    private function addPrecall(Context $c) {
+        $this->precalls[] = $c; 
+    }
+
+    private function addPreexpression(SymfonyTokenStream $value, $dependencies) {
+        $this->preexpressions[] = array('value' => $value, 'dependencies' => $dependencies);
     }
 }
