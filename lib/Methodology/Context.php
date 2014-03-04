@@ -12,6 +12,7 @@
 namespace Methodology;
 
 use Methodology\Language\Lexer;
+use Methodology\Exception\CollectedNotification;
 
 use Symfony\Component\ExpressionLanguage\TokenStream as SymfonyTokenStream;
 
@@ -38,6 +39,12 @@ class Context extends AbstractScope {
      * @var string[]
      */
     protected $preexpressions = array();
+
+    /**
+     * Values used by collectors.
+     */
+    private $partial_limit = 0;
+    private $partial_result = array();
     
     /**
      * Report of invoke call.
@@ -47,6 +54,7 @@ class Context extends AbstractScope {
     protected $report = array();
 
     const REPORT_DEPENDENCY_CHAIN_STOPPED = 1;
+    const REPORT_RESULT_COLLECTED = 2;
     
     public function __construct(callable $function) {
         $ref_function = new \ReflectionFunction($function);
@@ -118,7 +126,13 @@ class Context extends AbstractScope {
         }
         
         $callable = $this->callable->bindTo(new ContextProxy($this));
-        return call_user_func_array($callable, $evaluated); 
+        
+        $result = call_user_func_array($callable, $evaluated);
+
+        if(in_array(self::REPORT_RESULT_COLLECTED, $this->getReport()))
+            return $this->getPartialResult();
+        
+        return $result;
     }
 
     /**
@@ -204,6 +218,53 @@ class Context extends AbstractScope {
         return in_array(Context::REPORT_DEPENDENCY_CHAIN_STOPPED, $report);        
     }
 
+    /**
+     * Returns array of n context evaluations.
+     * 
+     * @param type $n
+     * @return array
+     */
+    public function collect($n, array $args = array()) {
+        $results = array(); 
+       
+        $this->setPartialLimit($n); 
+        while(count($results) < $n) {
+            try {
+                $returned = call_user_func_array($this, $args);       
+                
+                if(in_array(self::REPORT_RESULT_COLLECTED, $this->getReport()))
+                    $results = $this->getPartialResult();
+                else
+                    $results[] = $returned;
+                    
+            } catch(CollectedNotification $cn) {
+                /** @todo check has collection got proper size */
+                $results = $cn->getCollection();
+            }
+        }
+        
+        return $results;
+    }
+
+    public function savePartialResult($value) {
+        $this->report(self::REPORT_RESULT_COLLECTED);
+       
+        $this->partial_result[] = $value;
+        if($this->partial_limit > 0 && count($this->partial_result) >= $this->partial_limit)
+            throw new CollectedNotification($this->partial_result); 
+    }
+
+    private function getPartialResult() {
+        return $this->partial_result;
+    }
+
+    private function setPartialLimit($n) {
+        $this->partial_limit = $n;
+    }
+
+    private function clearPartialResult() {
+        $this->partial_result = array();
+    }
 
     /**
      * @throws \Methodology\OutOfBoundsException

@@ -262,4 +262,41 @@ class ContextTest extends PHPUnit_Framework_TestCase {
         $bar->depends('foo()*4');
         $bar->__invoke();
     }
+
+    /**
+     * @covers Context::collect
+     */
+    public function testCollectReturnValues() {
+        $context = new Context(function() {
+            foreach(range(0, 2) as $r)
+                return $r;
+        });
+
+        $this->assertEquals($context->collect(3), array(0, 0, 0));
+    }
+
+    public function rangeCollectorProvider() {
+        return array(
+            array(new Context(function() {
+                foreach(range(0, 2) as $r)
+                    $this->_collect($r);
+            }))
+        );
+    }
+
+    /**
+     * @covers Context::collect
+     * @dataProvider rangeCollectorProvider
+     */
+    public function testCollectOnCollector($context) {
+        $this->assertEquals($context->collect(7), array(0, 1, 2, 0, 1, 2, 0));
+    }
+    
+    /**
+     * @covers Context::collect
+     * @dataProvider rangeCollectorProvider
+     */
+    public function testInvokeCollector($context) {
+        $this->assertEquals($context(), array(0, 1, 2));
+    }
 }

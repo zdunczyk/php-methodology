@@ -23,7 +23,7 @@ class ContextProxy {
     protected $context;
 
     public function __construct(Context $context) {
-        $this->context = $context;    
+        $this->context = $context;
     }
 
     /**
@@ -53,6 +53,13 @@ class ContextProxy {
 
     public function _stopDependencyChain() {
         $this->context->report(Context::REPORT_DEPENDENCY_CHAIN_STOPPED);
+    }
+
+    /**
+     * @throws CollectedNotification
+     */
+    public function _collect($value) {
+        $this->context->savePartialResult($value);    
     }
 }
 
