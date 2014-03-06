@@ -121,11 +121,11 @@ class Context extends AbstractScope {
         foreach($this->precalls as $call) {
             $precall_result = $call();
             
-            if($call->getReport()->was(Report::DEPENDENCY_CHAIN_STOPPED))
+            if($call->inReport(Report::DEPENDENCY_CHAIN_STOPPED))
                 return $precall_result;            
         }
         
-        $callable = $this->callable->bindTo(new ContextProxy($this, $this->result));
+        $callable = $this->callable->bindTo(new ContextProxy($this, $this->report, $this->result));
         
         $result = call_user_func_array($callable, $evaluated);
 
@@ -189,14 +189,15 @@ class Context extends AbstractScope {
             throw new Exception('Wrong dependency type');    
         }
     }
-    
-    /**
-     * @return Report
-     */
-    public function getReport() {
-        return $this->report;
+
+    public function inReport($action) {
+        return $this->report->was($action);
     }
 
+    public function getReportSummary() {
+        return $this->report->getSummary();
+    }
+    
     /**
      * Returns array of n context evaluations.
      * 

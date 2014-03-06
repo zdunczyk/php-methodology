@@ -24,8 +24,11 @@ class ContextProxy {
 
     protected $result;
 
-    public function __construct(Context $context, Result &$result = null) {
+    protected $report;
+
+    public function __construct(Context $context, Report &$report = null, Result &$result = null) {
         $this->context = $context;
+        $this->report = $report;
         $this->result = $result;
     }
 
@@ -55,17 +58,22 @@ class ContextProxy {
     }
 
     public function _stopDependencyChain() {
-        $this->context->getReport()->occurred(Report::DEPENDENCY_CHAIN_STOPPED);
+        $this->report(Report::DEPENDENCY_CHAIN_STOPPED);
     }
 
     /**
      * @throws CollectedNotification
      */
     public function _collect($value) {
-        $this->context->getReport()->occurred(Report::RESULT_COLLECTED);
+        $this->report(Report::RESULT_COLLECTED);
 
         if(!is_null($this->result))
             $this->result->addPart($value);    
+    }
+
+    private function report($action) {
+        if(!is_null($this->report))
+            $this->report->occurred($action);
     }
 }
 

@@ -148,7 +148,7 @@ abstract class AbstractScope implements ScopeResolverInterface {
                                 'compiler' => NULL,
                                 'evaluator' => function() use ($resolved, &$report) {
                                     $result = call_user_func_array($resolved, array_slice(func_get_args(), 1));
-                                    $report->append($resolved->getReport());
+                                    $report->append($resolved->getReportSummary());
                                     return $result;
                                 }
                             );

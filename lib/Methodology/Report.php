@@ -34,12 +34,12 @@ class Report {
         return in_array($action, $this->reported);
     }
 
-    public function getList() {
+    public function getSummary() {
         return $this->reported;
     }
 
-    public function append(Report $report) {
-        $this->reported += $report->getList();
+    public function append(array $report) {
+        $this->reported += $report;
     }
 }
 
