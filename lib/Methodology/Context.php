@@ -45,18 +45,17 @@ class Context extends AbstractScope {
      */
     private $partial_limit = 0;
     private $partial_result = array();
-    
-    /**
-     * Report of invoke call.
-     * 
-     * @var array
-     */    
-    protected $report = array();
 
-    const REPORT_DEPENDENCY_CHAIN_STOPPED = 1;
-    const REPORT_RESULT_COLLECTED = 2;
+    /**
+     * Report of invocation.
+     * 
+     * @var Report     
+     */    
+    protected $report;
     
     public function __construct(callable $function) {
+        $this->report = new Report;
+        
         $ref_function = new \ReflectionFunction($function);
         
         foreach ($ref_function->getParameters() as $param) {
@@ -90,6 +89,8 @@ class Context extends AbstractScope {
      * @return mixed
      */
     public function __invoke() {
+        $this->report->clear();
+        
         $arguments = func_get_args();
         $evaluated = array();
         
@@ -98,10 +99,10 @@ class Context extends AbstractScope {
                 $evaluated[$key] = $param['value'];
             
                 if($param['expression']) {
-                    $report = array(); 
+                    $report = new Report; 
                     $evaluated[$key] = $this->evaluatePositional($param['value'], $param['dependencies'], $arguments, $report);
                         
-                    if(self::wasDependencyChainStopped($report))
+                    if($report->was(Report::DEPENDENCY_CHAIN_STOPPED))
                         return $evaluated[$key];     
                 }
             } else if(isset($arguments[$key])) {
@@ -110,26 +111,25 @@ class Context extends AbstractScope {
         }
 
         foreach($this->preexpressions as $exp) {
-            $report = array(); 
+            $report = new Report; 
             $expression_result = $this->evaluatePositional($exp['value'], $exp['dependencies'], $arguments, $report);
                 
-            if(self::wasDependencyChainStopped($report))
+            if($report->was(Report::DEPENDENCY_CHAIN_STOPPED))
                 return $expression_result;            
         }
 
         foreach($this->precalls as $call) {
-            $call->clearReport();
             $precall_result = $call();
             
-            if(self::wasDependencyChainStopped($call->getReport())) 
-                return $precall_result;
+            if($call->getReport()->was(Report::DEPENDENCY_CHAIN_STOPPED))
+                return $precall_result;            
         }
         
         $callable = $this->callable->bindTo(new ContextProxy($this));
         
         $result = call_user_func_array($callable, $evaluated);
 
-        if(in_array(self::REPORT_RESULT_COLLECTED, $this->getReport()))
+        if($this->report->was(Report::RESULT_COLLECTED))    
             return $this->getPartialResult();
         
         return $result;
@@ -189,33 +189,12 @@ class Context extends AbstractScope {
             throw new Exception('Wrong dependency type');    
         }
     }
-
-    /**
-     * Reports action in running Context.
-     * 
-     * @param type $action
-     */
-    public function report($action) {
-        $this->report[] = $action; 
-    }
     
     /**
-     * @see Context::report
-     */
-    public function clearReport() {
-        $this->report = array();
-    }
-
-    /**
-     * @return array
+     * @return Report
      */
     public function getReport() {
         return $this->report;
-    }
-
-
-    public static function wasDependencyChainStopped($report) {
-        return in_array(Context::REPORT_DEPENDENCY_CHAIN_STOPPED, $report);        
     }
 
     /**
@@ -232,7 +211,7 @@ class Context extends AbstractScope {
             try {
                 $returned = call_user_func_array($this, $args);       
                 
-                if(in_array(self::REPORT_RESULT_COLLECTED, $this->getReport()))
+                if($this->report->was(Report::RESULT_COLLECTED))    
                     $results = $this->getPartialResult();
                 else
                     $results[] = $returned;
@@ -247,7 +226,7 @@ class Context extends AbstractScope {
     }
 
     public function savePartialResult($value) {
-        $this->report(self::REPORT_RESULT_COLLECTED);
+        $this->report->occurred(Report::RESULT_COLLECTED);
        
         $this->partial_result[] = $value;
         if($this->partial_limit > 0 && count($this->partial_result) >= $this->partial_limit)

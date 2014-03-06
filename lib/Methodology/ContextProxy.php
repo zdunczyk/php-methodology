@@ -52,7 +52,7 @@ class ContextProxy {
     }
 
     public function _stopDependencyChain() {
-        $this->context->report(Context::REPORT_DEPENDENCY_CHAIN_STOPPED);
+        $this->context->getReport()->occurred(Report::DEPENDENCY_CHAIN_STOPPED);
     }
 
     /**

@@ -121,7 +121,7 @@ abstract class AbstractScope implements ScopeResolverInterface {
      * @param array $additionals    optional
      * @return mixed
      */
-    protected function evaluate(SymfonyTokenStream $expression, $dependencies, $additionals = array(), &$report = array()) {
+    protected function evaluate(SymfonyTokenStream $expression, $dependencies, $additionals = array(), Report &$report = null) {
         return $this->forwardEvaluate($this, new ResolveChain, $expression, $dependencies, $additionals, $report);
     }
     
@@ -130,7 +130,10 @@ abstract class AbstractScope implements ScopeResolverInterface {
      * @return type
      * @throws \Methodology\OutOfBoundsException
      */
-    protected function forwardEvaluate(ScopeResolverInterface $origin, ResolveChain $chain, SymfonyTokenStream $expression, $dependencies, $additionals = array(), &$report = array()) {
+    protected function forwardEvaluate(ScopeResolverInterface $origin, ResolveChain $chain, SymfonyTokenStream $expression, $dependencies, $additionals = array(), Report &$report = null) {
+        if(is_null($report))
+            $report = new Report;
+        
         $variables = is_array($additionals) ? $additionals : array();
         $functions = array();
         
@@ -144,9 +147,8 @@ abstract class AbstractScope implements ScopeResolverInterface {
                             $functions[$dependency] = array(
                                 'compiler' => NULL,
                                 'evaluator' => function() use ($resolved, &$report) {
-                                    $resolved->clearReport();
-                                        $result = call_user_func_array($resolved, array_slice(func_get_args(), 1));
-                                    $report += $resolved->getReport();
+                                    $result = call_user_func_array($resolved, array_slice(func_get_args(), 1));
+                                    $report->append($resolved->getReport());
                                     return $result;
                                 }
                             );
