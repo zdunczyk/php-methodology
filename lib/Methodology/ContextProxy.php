@@ -22,8 +22,11 @@ class ContextProxy {
      */
     protected $context;
 
-    public function __construct(Context $context) {
+    protected $result;
+
+    public function __construct(Context $context, Result &$result = null) {
         $this->context = $context;
+        $this->result = $result;
     }
 
     /**
@@ -59,7 +62,10 @@ class ContextProxy {
      * @throws CollectedNotification
      */
     public function _collect($value) {
-        $this->context->savePartialResult($value);    
+        $this->context->getReport()->occurred(Report::RESULT_COLLECTED);
+
+        if(!is_null($this->result))
+            $this->result->addPart($value);    
     }
 }
 

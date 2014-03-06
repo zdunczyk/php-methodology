@@ -11,16 +11,4 @@
 
 namespace Methodology\Exception;
 
-class CollectedNotification extends \Exception { 
-
-    protected $collection;
-
-    public function __construct($collection) {
-        $this->collection = $collection;
-        parent::__construct();
-    }
-
-    public function getCollection() {
-        return $this->collection;
-    }
-}
+class CollectedNotification extends \Exception { }

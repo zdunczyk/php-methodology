@@ -43,8 +43,7 @@ class Context extends AbstractScope {
     /**
      * Values used by collectors.
      */
-    private $partial_limit = 0;
-    private $partial_result = array();
+    protected $result;
 
     /**
      * Report of invocation.
@@ -55,6 +54,7 @@ class Context extends AbstractScope {
     
     public function __construct(callable $function) {
         $this->report = new Report;
+        $this->result = new Result;
         
         $ref_function = new \ReflectionFunction($function);
         
@@ -125,12 +125,12 @@ class Context extends AbstractScope {
                 return $precall_result;            
         }
         
-        $callable = $this->callable->bindTo(new ContextProxy($this));
+        $callable = $this->callable->bindTo(new ContextProxy($this, $this->result));
         
         $result = call_user_func_array($callable, $evaluated);
 
         if($this->report->was(Report::RESULT_COLLECTED))    
-            return $this->getPartialResult();
+            return $this->result->get();
         
         return $result;
     }
@@ -204,45 +204,19 @@ class Context extends AbstractScope {
      * @return array
      */
     public function collect($n, array $args = array()) {
-        $results = array(); 
-       
-        $this->setPartialLimit($n); 
-        while(count($results) < $n) {
+        $this->result = new Result($n);
+        
+        while(!$this->result->complete()) {
             try {
                 $returned = call_user_func_array($this, $args);       
+
+                if(!$this->report->was(Report::RESULT_COLLECTED))
+                    $this->result->addPart($returned);
                 
-                if($this->report->was(Report::RESULT_COLLECTED))    
-                    $results = $this->getPartialResult();
-                else
-                    $results[] = $returned;
-                    
-            } catch(CollectedNotification $cn) {
-                /** @todo check has collection got proper size */
-                $results = $cn->getCollection();
-            }
+            } catch(CollectedNotification $cn) { }
         }
-        
-        return $results;
-    }
 
-    public function savePartialResult($value) {
-        $this->report->occurred(Report::RESULT_COLLECTED);
-       
-        $this->partial_result[] = $value;
-        if($this->partial_limit > 0 && count($this->partial_result) >= $this->partial_limit)
-            throw new CollectedNotification($this->partial_result); 
-    }
-
-    private function getPartialResult() {
-        return $this->partial_result;
-    }
-
-    private function setPartialLimit($n) {
-        $this->partial_limit = $n;
-    }
-
-    private function clearPartialResult() {
-        $this->partial_result = array();
+        return $this->result->get();
     }
 
     /**
