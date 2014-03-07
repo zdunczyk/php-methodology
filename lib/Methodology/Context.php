@@ -58,7 +58,7 @@ class Context extends AbstractScope implements CallableInterface {
         
         $ref_function = new \ReflectionFunction($function);
         
-        foreach ($ref_function->getParameters() as $param) {
+        /*foreach ($ref_function->getParameters() as $param) {
             $next_param = &$this->params[];
             $next_param = array(
                 'name' => $param->getName(),
@@ -74,7 +74,7 @@ class Context extends AbstractScope implements CallableInterface {
                 list($next_param['value'], $next_param['dependencies']) = 
                     $this->tokenize($param->getDefaultValue());
             }
-        }
+        }*/
         
         $this->callable = $function;
     }
@@ -167,7 +167,7 @@ class Context extends AbstractScope implements CallableInterface {
 
     public function depends($mixed) {
         /** @todo when array is passed it should overwrite params default values */
-        if($mixed instanceof Context) {
+        /*if($mixed instanceof Context) {
             $this->addPrecall($mixed);
             return $mixed;
             
@@ -187,7 +187,7 @@ class Context extends AbstractScope implements CallableInterface {
             
         } else {
             throw new Exception('Wrong dependency type');    
-        }
+        }*/
     }
 
     public function inReport($action) {

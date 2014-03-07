@@ -12,14 +12,7 @@
 namespace Methodology;
 
 use Methodology\ScopeResolverInterface;
-use Methodology\Language\TokenStream;
-use Methodology\Language\Lexer;
 use Methodology\ResolveChain;
-
-use Symfony\Component\ExpressionLanguage\ExpressionLanguage;
-use Symfony\Component\ExpressionLanguage\TokenStream as SymfonyTokenStream;
-use Symfony\Component\ExpressionLanguage\ParsedExpression;
-use Symfony\Component\ExpressionLanguage\Parser;
 
 /**
  * Abstract class which supports basic scope manipulation.
@@ -42,18 +35,6 @@ abstract class AbstractScope implements ScopeResolverInterface {
      */
     protected $parent = null;
 
-    /**
-     * Holds name dependencies from defined expressions. 
-     * 
-     * @var array   
-     */
-    protected $dependencies = array();
-  
-    /**
-     * @var Lexer
-     */
-    protected static $lexer = null;
-   
     /**
      * {@inheritdoc}
      * 
@@ -80,12 +61,12 @@ abstract class AbstractScope implements ScopeResolverInterface {
             
             $value = $this->values[$key];
             
-            if($this->isExpression($value)) {
+            if($value instanceof Expression) {
                 $branch = clone($chain);
                 $branch->push($key);
                 
                 try {
-                    $value = $this->forwardEvaluate($origin, $branch, $value, $this->getDependencies($key));
+                    $value = $value->forwardEvaluate($origin, $branch);
                 } catch(\OutOfBoundsException $e) {
                     throw new \OutOfBoundsException("Could not resolve dependency of `$key` key!");
                 }
@@ -109,81 +90,9 @@ abstract class AbstractScope implements ScopeResolverInterface {
      */
     protected function define($key, $value) {
         $this->isNameValid($key);
-        list($this->values[$key], $this->dependencies[$key]) = $this->tokenize($value); 
+        $this->values[$key] = DefinitionFactory::create($value);
     }
    
-    /**
-     * Evaluates TokenStream in current scope, with specific dependencies and 
-     * additional variables.
-     *  
-     * @param string $expression
-     * @param array $dependencies
-     * @param array $additionals    optional
-     * @return mixed
-     */
-    public function evaluate(SymfonyTokenStream $expression, $dependencies, $additionals = array(), Report &$report = null) {
-        return $this->forwardEvaluate($this, new ResolveChain, $expression, $dependencies, $additionals, $report);
-    }
-    
-    /**
-     * @see AbstractScope::forwardResolve
-     * @return type
-     * @throws \Methodology\OutOfBoundsException
-     */
-    protected function forwardEvaluate(ScopeResolverInterface $origin, ResolveChain $chain, SymfonyTokenStream $expression, $dependencies, $additionals = array(), Report &$report = null) {
-        if(is_null($report))
-            $report = new Report;
-        
-        $variables = is_array($additionals) ? $additionals : array();
-        $functions = array();
-        
-        if(!empty($dependencies)) {
-            foreach($dependencies as $dependency) {
-                if(!isset($variables[$dependency])) {
-                    try {
-                        $resolved = $origin->forwardResolve($dependency, $origin, $chain); 
-                        
-                        if($resolved instanceof Context) {
-                            $functions[$dependency] = array(
-                                'compiler' => NULL,
-                                'evaluator' => function() use ($resolved, &$report) {
-                                    $result = call_user_func_array($resolved, array_slice(func_get_args(), 1));
-                                    $report->append($resolved->getReportSummary());
-                                    return $result;
-                                }
-                            );
-                        } else                                 
-                            $variables[$dependency] = $resolved;                             
-                        
-                    } catch(\OutOfBoundsException $e) {
-                        /** @todo specify problematic $dependency */
-                        throw $e;               
-                    }
-                }
-            }   
-        }
-        
-        return $this->getParsedExpression($expression, $dependencies, $functions)->getNodes()->evaluate($functions, $variables); 
-    }
-   
-    /**
-     * Returns TokenStream with its dependencies.
-     * 
-     * @param type $value
-     * @return array
-     */
-    protected function tokenize($value) {
-        $dependencies = null;
-        
-        if(is_string($value)) {
-            $value = $this->getLexer()->tokenize($value); 
-            
-            $dependencies = $this->fetchDependenciesFrom($value);
-        }
-       
-        return array($value, $dependencies);
-    }
-    
     /**
      * Sets a new parent scope for current virtual-scope object. 
      *  
@@ -192,20 +101,6 @@ abstract class AbstractScope implements ScopeResolverInterface {
      */
     public function setParent(ScopeResolverInterface $resolver) {
         return ($this->parent = $resolver);
-    }
-  
-    /**
-     * @return bool 
-     */
-    public function hasDependencies($key) {
-        return $this->isNameValid($key) && isset($this->dependencies[$key]);
-    }
-    
-    /**
-     * @private
-     */
-    public function getDependencies($key) {
-        return $this->hasDependencies($key) ? $this->dependencies[$key] : null;
     }
 
     /**
@@ -233,53 +128,5 @@ abstract class AbstractScope implements ScopeResolverInterface {
             throw new \InvalidArgumentException("Scope's variable name must be a string!");
         
         return true;
-    }
-
-    /**
-     * Returns dependencies which will have to be resolved on parsing.
-     * 
-     * @param \Symfony\Component\ExpressionLanguage\TokenStream $stream
-     * @return array        dependencies found in TokenStream
-     */
-    private function fetchDependenciesFrom(SymfonyTokenStream $stream) {
-        $iterable_stream = new TokenStream($stream);
-        
-        $depends_on = array();
-        foreach($iterable_stream as $name_token) {
-            $depends_on[] = $name_token->value;
-        }
-
-        return $depends_on;
-    }
-    
-    /**
-     * @return Lexer
-     */
-    private function getLexer() {
-        if(is_null(self::$lexer))
-            self::$lexer = new Lexer();
-
-        return self::$lexer;
-    }
-
-    /**
-     * Temporary solution for parsing expressions.
-     * 
-     * @param \Symfony\Component\ExpressionLanguage\TokenStream $stream
-     * @param string $key
-     * @return \Symfony\Component\ExpressionLanguage\ParsedExpression
-     */
-    private function getParsedExpression(SymfonyTokenStream $stream, $dependencies, $functions) {
-        $parser = new Parser($functions);
-        
-        $nodes = $parser->parse(clone $stream, $dependencies);
-        return new ParsedExpression('', $nodes);
-    }
-    
-    /**
-     * @return bool
-     */ 
-    private function isExpression($value) {
-        return $value instanceof SymfonyTokenStream;
     }
 }

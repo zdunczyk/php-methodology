@@ -13,7 +13,10 @@ namespace Methodology;
 
 use Methodology\Language\Lexer;
 use Methodology\Language\TokenStream;
+
 use Symfony\Component\ExpressionLanguage\TokenStream as SymfonyTokenStream;
+use Symfony\Component\ExpressionLanguage\ParsedExpression;
+use Symfony\Component\ExpressionLanguage\Parser;
 
 class Expression implements CallableInterface {
 
@@ -69,6 +72,60 @@ class Expression implements CallableInterface {
     }
     
     /**
+     * Evaluates TokenStream in current scope, with specific dependencies and 
+     * additional variables.
+     *  
+     * @param string $expression
+     * @param array $dependencies
+     * @param array $additionals    optional
+     * @return mixed
+     */
+    public function evaluate(ScopeResolverInterface $origin, ResolveChain $chain = null, $additionals = array(), Report &$report = null) {
+        if(is_null($chain))
+            $chain = new ResolveChain;
+        
+        return $this->forwardEvaluate($origin, $chain, $additionals, $report);
+    }
+    
+    /**
+     * @return type
+     * @throws \Methodology\OutOfBoundsException
+     */
+    public function forwardEvaluate(ScopeResolverInterface $origin, ResolveChain $chain, $additionals = array(), Report &$report = null) {
+        if(is_null($report))
+            $report = new Report;
+        
+        $variables = is_array($additionals) ? $additionals : array();
+        $functions = array();
+        
+        foreach($this->dependencies as $dependency) {
+            if(!isset($variables[$dependency])) {
+                try {
+                    $resolved = $origin->forwardResolve($dependency, $origin, $chain); 
+                    
+                    if($resolved instanceof Context) {
+                        $functions[$dependency] = array(
+                            'compiler' => NULL,
+                            'evaluator' => function() use ($resolved, &$report) {
+                                $result = call_user_func_array($resolved, array_slice(func_get_args(), 1));
+                                $report->append($resolved->getReportSummary());
+                                return $result;
+                            }
+                        );
+                    } else                                 
+                        $variables[$dependency] = $resolved;                             
+                    
+                } catch(\OutOfBoundsException $e) {
+                    /** @todo specify problematic $dependency */
+                    throw $e;               
+                }
+            }
+        }   
+        
+        return $this->getParsedExpression($this->tokens, $this->dependencies, $functions)->getNodes()->evaluate($functions, $variables); 
+    }
+    
+    /**
      * @return Lexer
      */
     private function getLexer() {
@@ -93,5 +150,19 @@ class Expression implements CallableInterface {
         }
 
         return $depends_on;
+    }
+    
+    /**
+     * Temporary solution for parsing expressions.
+     * 
+     * @param \Symfony\Component\ExpressionLanguage\TokenStream $stream
+     * @param string $key
+     * @return \Symfony\Component\ExpressionLanguage\ParsedExpression
+     */
+    private function getParsedExpression(SymfonyTokenStream $stream, $dependencies, $functions) {
+        $parser = new Parser($functions);
+        
+        $nodes = $parser->parse(clone $stream, $dependencies);
+        return new ParsedExpression('', $nodes);
     }
 }
