@@ -19,7 +19,7 @@ use Symfony\Component\ExpressionLanguage\TokenStream as SymfonyTokenStream;
 /**
  * @author Tomasz Zduńczyk
  */
-class Context extends AbstractScope {
+class Context extends AbstractScope implements CallableInterface {
     /**
      * @var callable    function wrapped by context
      */
@@ -250,5 +250,9 @@ class Context extends AbstractScope {
 
     private function addPreexpression(SymfonyTokenStream $value, $dependencies) {
         $this->preexpressions[] = array('value' => $value, 'dependencies' => $dependencies);
+    }
+
+    public function call(array $arguments = array(), Scope $scope = null, Report &$report = null) { 
+        return $this();
     }
 }

@@ -121,7 +121,7 @@ abstract class AbstractScope implements ScopeResolverInterface {
      * @param array $additionals    optional
      * @return mixed
      */
-    protected function evaluate(SymfonyTokenStream $expression, $dependencies, $additionals = array(), Report &$report = null) {
+    public function evaluate(SymfonyTokenStream $expression, $dependencies, $additionals = array(), Report &$report = null) {
         return $this->forwardEvaluate($this, new ResolveChain, $expression, $dependencies, $additionals, $report);
     }
     
