@@ -47,7 +47,7 @@ class Expression implements CallableInterface {
     /**
      * {@inheritdoc} 
      */
-    public function call(array $arguments = array(), Scope $scope = null, Report &$report = null) {
+    public function call(array $arguments = array(), ScopeResolverInterface $scope = null, Report &$report = null) {
         $positional_params = array();
         
         foreach($this->dependencies as $dependency) {
@@ -62,13 +62,20 @@ class Expression implements CallableInterface {
         
         try {
             if(is_object($scope))
-                return $scope->evaluate($this->tokens, $this->dependencies, $positional_params, $report);
+                return $this->evaluate($scope, null, $positional_params, $report);
             
             return null;
         } catch(\OutOfBoundsException $e) {
             /** @todo add proper message */
             throw $e;
         }
+    }
+    
+    /**
+     * {@inheritdoc} 
+     */
+    public function raw(ScopeResolverInterface $scope = null, ResolveChain $chain = null) {
+        return $this->forwardEvaluate($scope, $chain);
     }
     
     /**

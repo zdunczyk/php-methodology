@@ -13,5 +13,7 @@ namespace Methodology;
 
 interface CallableInterface {
     
-    public function call(array $arguments = array(), Scope $scope = null, Report &$report = null); 
+    public function call(array $arguments = array(), ScopeResolverInterface $scope = null, Report &$report = null); 
+
+    public function raw(ScopeResolverInterface $scope = null, ResolveChain $chain = null);
 }

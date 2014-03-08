@@ -107,16 +107,12 @@ class ContextTest extends PHPUnit_Framework_TestCase {
         $params = $context->getParams();
         $this->assertCount(4, $params);
         
-        $this->assertEquals($params[0]['name'], 'a');
-        $this->assertEquals($params[2]['name'], 'bar'); 
+        $this->assertEquals($params[0]->getName(), 'a');
+        $this->assertEquals($params[2]->getName(), 'bar'); 
 
-        $this->assertTrue($params[1]['expression']);
-        $this->assertFalse($params[0]['expression']);
+        $this->assertTrue($params[2]->getDefaultCallable() instanceof Methodology\CallableInterface);
 
-        $this->assertTrue($params[2]['value'] instanceof 
-                \Symfony\Component\ExpressionLanguage\TokenStream);
-
-        $this->assertNull($params[3]['value']);
+        $this->assertNull($params[3]->getDefaultCallable());
     }
 
     /**

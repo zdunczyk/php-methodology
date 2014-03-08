@@ -59,20 +59,14 @@ abstract class AbstractScope implements ScopeResolverInterface {
         if($this->isNameValid($key) 
             && (isset($this->values[$key]) || array_key_exists($key, $this->values))) {
             
-            $value = $this->values[$key];
+            $branch = clone($chain);
+            $branch->push($key);
             
-            if($value instanceof Expression) {
-                $branch = clone($chain);
-                $branch->push($key);
-                
-                try {
-                    $value = $value->forwardEvaluate($origin, $branch);
-                } catch(\OutOfBoundsException $e) {
-                    throw new \OutOfBoundsException("Could not resolve dependency of `$key` key!");
-                }
+            try {
+                return $this->values[$key]->raw($origin, $branch);
+            } catch(\OutOfBoundsException $e) {
+                throw new \OutOfBoundsException("Could not resolve dependency of `$key` key!");
             }
-            
-            return $value;
         }
         
         if(!is_null($this->parent))
@@ -90,7 +84,7 @@ abstract class AbstractScope implements ScopeResolverInterface {
      */
     protected function define($key, $value) {
         $this->isNameValid($key);
-        $this->values[$key] = DefinitionFactory::create($value);
+        $this->values[$key] = DefinitionFactory::create($value, $this);
     }
    
     /**

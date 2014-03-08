@@ -13,14 +13,27 @@ namespace Methodology;
 
 class DefinitionFactory {
     
-    public static function create($mixed) {
+    public static function create($mixed, ScopeResolverInterface $scope = null) {
         
-        if($mixed instanceof Closure) 
-            return new Context($mixed);
+        if($mixed instanceof \Closure) {
+            $context = new Context($mixed);
+            
+            if(!is_null($scope))
+                $context->setParent($scope);
+
+            return $context;
+        }
         
-        if(is_string($mixed))
+        if(self::expressionPossible($mixed))
             return new Expression($mixed);
 
+        if(!is_object($mixed))
+            return new Variable($mixed);
+
         return $mixed;
+    }
+
+    public static function expressionPossible($value) {
+        return is_string($value);
     }
 }

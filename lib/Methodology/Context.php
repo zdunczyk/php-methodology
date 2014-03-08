@@ -26,19 +26,14 @@ class Context extends AbstractScope implements CallableInterface {
     protected $callable;
 
     /**
-     * @var array
+     * @var ContextParam[]
      */
     protected $params = array();
 
     /**
-     * @var Context[]
+     * @var CallableInterface[]
      */ 
     protected $precalls = array();
-
-    /**
-     * @var string[]
-     */
-    protected $preexpressions = array();
 
     /**
      * Values used by collectors.
@@ -58,23 +53,11 @@ class Context extends AbstractScope implements CallableInterface {
         
         $ref_function = new \ReflectionFunction($function);
         
-        /*foreach ($ref_function->getParameters() as $param) {
-            $next_param = &$this->params[];
-            $next_param = array(
-                'name' => $param->getName(),
-                'optional' => $param->isOptional()
-            );
-
-            if($next_param['optional'])
-                $next_param['value'] = $param->getDefaultValue();
-           
-            $next_param['expression'] = $next_param['optional'] && is_string($next_param['value']);
-            
-            if($next_param['expression']) {
-                list($next_param['value'], $next_param['dependencies']) = 
-                    $this->tokenize($param->getDefaultValue());
-            }
-        }*/
+        foreach ($ref_function->getParameters() as $param) {
+            $this->params[] = new ContextParam( $param->getName(), 
+                                                $param->isOptional(), 
+                                                $param->isOptional() ? $param->getDefaultValue() : null);
+        }
         
         $this->callable = $function;
     }
@@ -93,35 +76,26 @@ class Context extends AbstractScope implements CallableInterface {
         
         $arguments = func_get_args();
         $evaluated = array();
+        $report = new Report;
         
         foreach($this->params as $key => $param) {
-            if($param['optional']) {
-                $evaluated[$key] = $param['value'];
-            
-                if($param['expression']) {
-                    $report = new Report; 
-                    $evaluated[$key] = $this->evaluatePositional($param['value'], $param['dependencies'], $arguments, $report);
-                        
-                    if($report->was(Report::DEPENDENCY_CHAIN_STOPPED))
-                        return $evaluated[$key];     
-                }
+            if($param->isOptional()) {
+                $report->clear();
+                $evaluated[$key] = $param->getDefaultCallable()->call($arguments, $this, $report);
+                    
+                if($report->was(Report::DEPENDENCY_CHAIN_STOPPED))
+                    return $evaluated[$key];     
+                
             } else if(isset($arguments[$key])) {
                 $evaluated[$key] = $arguments[$key];
             }
         }
-
-        foreach($this->preexpressions as $exp) {
-            $report = new Report; 
-            $expression_result = $this->evaluatePositional($exp['value'], $exp['dependencies'], $arguments, $report);
-                
-            if($report->was(Report::DEPENDENCY_CHAIN_STOPPED))
-                return $expression_result;            
-        }
-
-        foreach($this->precalls as $call) {
-            $precall_result = $call();
+        
+        foreach($this->precalls as $precall) {
+            $report->clear();
+            $precall_result = $precall->call($arguments, $this, $report);
             
-            if($call->inReport(Report::DEPENDENCY_CHAIN_STOPPED))
+            if($report->was(Report::DEPENDENCY_CHAIN_STOPPED))
                 return $precall_result;            
         }
         
@@ -167,27 +141,7 @@ class Context extends AbstractScope implements CallableInterface {
 
     public function depends($mixed) {
         /** @todo when array is passed it should overwrite params default values */
-        /*if($mixed instanceof Context) {
-            $this->addPrecall($mixed);
-            return $mixed;
-            
-        } else if(is_callable($mixed)) {
-            $context = new Context($mixed);
-            $context->setParent($this->parent);
-            
-            $this->addPrecall($context);
-            return $context;
-            
-        } else if(is_string($mixed)) {
-            list($preexp_value, $preexp_dep) = 
-                    $this->tokenize($mixed);
-            
-            $this->addPreexpression($preexp_value, $preexp_dep);
-            return null;
-            
-        } else {
-            throw new Exception('Wrong dependency type');    
-        }*/
+        $this->precalls[] = DefinitionFactory::create($mixed, $this);    
     }
 
     public function inReport($action) {
@@ -221,38 +175,19 @@ class Context extends AbstractScope implements CallableInterface {
     }
 
     /**
-     * @throws \Methodology\OutOfBoundsException
+     * {@inheritdoc} 
      */
-    protected function evaluatePositional(SymfonyTokenStream $expression, $dependencies, $arguments, &$report) {
-        $positional_params = array();
+    public function call(array $arguments = array(), ScopeResolverInterface $scope = null, Report &$report = null) { 
+        if(!is_null($report))
+            $this->report = $report;
         
-        foreach($dependencies as $dependency) {
-            if(!is_null($positional = Lexer::getPositionalParameter($dependency))) {
-                $arg_position = (int)($positional-1);
-                
-                if(isset($arguments[$arg_position])) {
-                    $positional_params[$dependency] = $arguments[$arg_position];    
-                }
-            }
-        }
-        try {
-            return $this->evaluate($expression, $dependencies, $positional_params, $report);
-            
-        } catch(\OutOfBoundsException $e) {
-            /** @todo add proper message */
-            throw $e;
-        }
-    }
-
-    private function addPrecall(Context $c) {
-        $this->precalls[] = $c; 
-    }
-
-    private function addPreexpression(SymfonyTokenStream $value, $dependencies) {
-        $this->preexpressions[] = array('value' => $value, 'dependencies' => $dependencies);
-    }
-
-    public function call(array $arguments = array(), Scope $scope = null, Report &$report = null) { 
         return $this();
+    }
+
+    /**
+     * {@inheritdoc} 
+     */
+    public function raw(ScopeResolverInterface $scope = null, ResolveChain $chain = null) {
+        return $this;
     }
 }
