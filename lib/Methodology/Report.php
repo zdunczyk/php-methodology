@@ -14,8 +14,9 @@ namespace Methodology;
 class Report {
     
     const RESULT_COLLECTED = 1;
-    const DEPENDENCY_CHAIN_STOPPED = 2;
-    const PROPAGATION_CHAIN_STOPPED = 3;
+    const COLLECT_MODE_ON = 2;
+    const DEPENDENCY_CHAIN_STOPPED = 3;
+    const PROPAGATION_CHAIN_STOPPED = 4;
     
     protected $reported;
     

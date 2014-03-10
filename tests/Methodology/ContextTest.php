@@ -310,4 +310,15 @@ class ContextTest extends PHPUnit_Framework_TestCase {
 
         $this->assertEquals($context(), $foo + 2);
     }
+
+    public function testReturningFromCollector() {
+        $bar = 4;
+        
+        $context = new Context(function() use ($bar) {
+            $this->_collect($bar - 1);
+            return $bar;
+        }); 
+
+        $this->assertEquals($context(), $bar);
+    }
 }

@@ -108,7 +108,8 @@ class Context extends AbstractScope implements CallableInterface {
         
         $result = call_user_func_array($callable, $evaluated);
 
-        if($this->report->was(Report::RESULT_COLLECTED))    
+        if(($this->report->was(Report::COLLECT_MODE_ON) || is_null($result)) 
+                                    && $this->report->was(Report::RESULT_COLLECTED))    
             return $this->result->get();
        
         $postcall_result = $result;
@@ -179,7 +180,8 @@ class Context extends AbstractScope implements CallableInterface {
      */
     public function collect($n, array $args = array()) {
         $this->result = new Result($n);
-        
+       
+        $this->report->occurred(Report::COLLECT_MODE_ON);
         while(!$this->result->complete()) {
             try {
                 $returned = call_user_func_array($this, $args);       
