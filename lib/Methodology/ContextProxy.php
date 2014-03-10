@@ -61,6 +61,10 @@ class ContextProxy {
         $this->report(Report::DEPENDENCY_CHAIN_STOPPED);
     }
 
+    public function _stopPropagationChain() {
+        $this->report(Report::PROPAGATION_CHAIN_STOPPED);
+    }
+
     /**
      * @throws CollectedNotification
      */

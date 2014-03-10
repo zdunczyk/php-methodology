@@ -295,4 +295,19 @@ class ContextTest extends PHPUnit_Framework_TestCase {
     public function testInvokeCollector($context) {
         $this->assertEquals($context(), array(0, 1, 2));
     }
+
+    /**
+     * @covers Context::propagates
+     */
+    public function testPropagatesToExpression() {
+        $foo = 3;
+        
+        $context = new Context(function() use ($foo) {
+            return $foo;    
+        });
+        
+        $context->propagates('$1 + 2');
+
+        $this->assertEquals($context(), $foo + 2);
+    }
 }

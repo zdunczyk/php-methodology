@@ -36,6 +36,11 @@ class Context extends AbstractScope implements CallableInterface {
     protected $precalls = array();
 
     /**
+     * @var CallableInterface[]
+     */ 
+    protected $postcalls = array();
+    
+    /**
      * Values used by collectors.
      */
     protected $result;
@@ -105,8 +110,22 @@ class Context extends AbstractScope implements CallableInterface {
 
         if($this->report->was(Report::RESULT_COLLECTED))    
             return $this->result->get();
+       
+        $postcall_result = $result;
         
-        return $result;
+        foreach($this->postcalls as $postcall) {
+            $postcall_arguments = $postcall_result;
+            if(!is_array($postcall_arguments))
+                $postcall_arguments = array($postcall_result);
+            
+            $report->clear();
+            $postcall_result = $postcall->call($postcall_arguments, $this, $report);
+            
+            if($report->was(Report::PROPAGATION_CHAIN_STOPPED))
+                return $postcall_result;
+        }
+        
+        return $postcall_result;
     }
 
     /**
@@ -188,6 +207,15 @@ class Context extends AbstractScope implements CallableInterface {
      * {@inheritdoc} 
      */
     public function raw(ScopeResolverInterface $scope = null, ResolveChain $chain = null) {
+        return $this;
+    }
+
+    public function propagates($mixed) {
+        $this->postcalls[] = $postcall = DefinitionFactory::create($mixed, $this);    
+        
+        if($postcall instanceof Context) 
+            return $postcall;
+       
         return $this;
     }
 }
