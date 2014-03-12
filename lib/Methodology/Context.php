@@ -202,7 +202,7 @@ class Context extends AbstractScope implements CallableInterface {
         if(!is_null($report))
             $this->report = $report;
         
-        return $this();
+        return call_user_func_array($this, $arguments);
     }
 
     /**
