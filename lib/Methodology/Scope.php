@@ -31,7 +31,7 @@ class Scope extends AbstractScope {
     }
 
     public function define($key, $value) {
-        if(is_callable($value)) {
+        if(is_object($value) && $value instanceof Closure) {
             $value = new Context($value);
             $value->setParent($this);
         }
