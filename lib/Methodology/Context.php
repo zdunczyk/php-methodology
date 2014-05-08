@@ -220,4 +220,9 @@ class Context extends AbstractScope implements CallableInterface {
        
         return $this;
     }
+
+    public function define($mixed, $value) {  
+        if(!is_null($this->parent))
+            $this->parent->define($mixed, $value); 
+    }
 }

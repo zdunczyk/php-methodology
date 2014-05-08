@@ -42,8 +42,12 @@ class ContextProxy {
         return $this->context->resolve($key);    
     }
 
+    public function __set($name, $value) {
+        $this->context->define($name, $value);
+    }
+
     public function __call($name, $args) {
-        return call_user_func_array($this->context->resolve($name), $args);
+        return call_user_func_array($this->$name, $args);
     }
 
     /**

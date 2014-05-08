@@ -29,8 +29,11 @@ class Scope {
      */
     private $done = false;        
 
-    public function __construct() {
-        $this->raw = new RawScope();
+    public function __construct(RawScope $raw_scope = null) {
+        if(is_null($raw_scope))
+            $this->raw = new RawScope();
+        else
+            $this->raw = $raw_scope;
     }
 
     
@@ -54,5 +57,9 @@ class Scope {
     
     public function __done() {
         $this->done = true;        
+    }
+
+    public function newChild() {
+        return new self($this->raw->newChild());
     }
 }
