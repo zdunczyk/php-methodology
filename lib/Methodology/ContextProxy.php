@@ -42,6 +42,10 @@ class ContextProxy {
         return $this->context->resolve($key);    
     }
 
+    public function __call($name, $args) {
+        return call_user_func_array($this->context->resolve($name), $args);
+    }
+
     /**
      * When is able to resolve $key returns its value, otherwise returns default. 
      * 
